@@ -5,6 +5,8 @@ import "./styles/screens.css";
 
 export { configureApi, apiFetch, ApiError, API_BASE } from "./api/client";
 export { useMe, useManifest, usePermissions } from "./api/identity";
+export type { Run, RunListItem } from "./api/runs";
 export type { Me, Manifest, NavItem } from "./api/identity";
 export { AssessmentsScreen } from "./screens/AssessmentsScreen";
+export { CreateRunScopeScreen } from "./screens/CreateRunScopeScreen";
 export { PlaceholderScreen } from "./screens/PlaceholderScreen";

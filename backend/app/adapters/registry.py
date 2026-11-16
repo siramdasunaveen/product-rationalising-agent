@@ -10,6 +10,7 @@ from app.adapters.local.audit import DbAuditLog
 from app.adapters.local.auth import LocalJwtAuth
 from app.adapters.local.jobs import RqJobQueue
 from app.adapters.local.notify import LogNotifier
+from app.adapters.local.people import DbPeopleDirectory
 from app.adapters.local.secrets import FernetCipher
 from app.adapters.local.storage import DiskStorage
 from app.adapters.studio import adapters as studio
@@ -19,6 +20,7 @@ from app.ports.audit import AuditLog
 from app.ports.auth import AuthProvider
 from app.ports.jobs import JobQueue
 from app.ports.notify import Notifier
+from app.ports.people import PeopleDirectory
 from app.ports.secrets import SecretCipher
 from app.ports.storage import ObjectStorage
 
@@ -33,6 +35,7 @@ class Platform:
     audit: AuditLog
     secrets: SecretCipher
     notify: Notifier
+    people: PeopleDirectory
     # Standalone only: issues tokens after email + password sign-in.
     token_issuer: LocalJwtAuth | None = None
     redis: Any = None
@@ -57,6 +60,7 @@ def build_platform(settings: Settings, *, redis: Any = None) -> Platform:
             audit=studio.StudioAuditLog(),
             secrets=studio.StudioSecretCipher(),
             notify=studio.StudioNotifier(),
+            people=studio.StudioPeopleDirectory(),
             redis=redis,
         )
 
@@ -70,6 +74,7 @@ def build_platform(settings: Settings, *, redis: Any = None) -> Platform:
         audit=DbAuditLog(),
         secrets=FernetCipher(settings.fernet_key),
         notify=LogNotifier(),
+        people=DbPeopleDirectory(),
         token_issuer=token_issuer,
         redis=redis,
     )

@@ -43,6 +43,21 @@
 - Minimum password length is 8 (NIST SP 800-63B). Changing `PRA_DEMO_PASSWORD` does not change
   existing users; run `python -m app.cli seed-demo-users --reset-passwords`.
 
+## Spec documents of 16 Nov 2026: proposed resolutions (developer OK'd the plan; change any time)
+| Topic | Resolution | Status |
+|---|---|---|
+| Evidence status STALE / CONFLICTED (field spec) vs CLAUDE.md rule 2 (4 statuses) | Keep the 4 statuses; stale and conflicted are separate flags on a domain/evidence item | Proposed |
+| STANDARDISE vs STANDARDIZE | `STANDARDISE` everywhere (field spec spelling) | Proposed |
+| Spec API paths (`/api/runs`, `/api/mappings`) | Keep our prefix: `/api/rationalisation/runs`, `/api/rationalisation/mappings`, … | Proposed |
+| Portfolios, markets, product families | Tenant reference tables, seeded by `python -m app.cli seed-reference-data`; later fed from the CRM catalog | Proposed |
+| Portfolio entitlement | Until defined: every user of a tenant may use all its portfolios | Proposed |
+| Mapping "separate Publish permission" | New permission `mapping.publish`, given to Agent Admin | Proposed |
+| Malware scanning of uploads | Behind a scanner port; local stub now, ClamAV (or studio service) later | Proposed |
+| Domain events | Outbox table + polling; no message broker, no SSE for now | Proposed |
+| Hard-coded model (`PRA_ANTHROPIC_MODEL`) | Replaced in Step 8 by a model registry (deployments as data) | Proposed |
+| Define Scope period | Start/end dates (field spec), not free text as in the screenshot; "Last 12 months" quick option | Proposed |
+| Market on Define Scope | Multi-select 1–10 (field spec), not single as in the screenshot | Proposed |
+
 ## Proposed defaults (AI Studio contract not decided yet; confirm with the colleague)
 | Topic | Default | Status |
 |---|---|---|

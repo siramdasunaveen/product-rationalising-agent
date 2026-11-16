@@ -7,6 +7,7 @@ from app.ports.audit import AuditEntry, AuditRecord, ChainCheck
 from app.ports.auth import Principal
 from app.ports.jobs import JobStatus
 from app.ports.notify import Notification
+from app.ports.people import Person
 from app.ports.storage import StorageArea, StoredObject
 
 _TODO = "AI Studio adapter not implemented yet (see docstring)"
@@ -103,6 +104,21 @@ class StudioSecretCipher:
         raise NotImplementedError(_TODO)
 
     def decrypt(self, token: str) -> str:
+        raise NotImplementedError(_TODO)
+
+
+class StudioPeopleDirectory:
+    """Look up users of the tenant in the studio's directory (owner and assignee pickers).
+
+    Needs: search by tenant + role/permission + free text, and get-by-id, returning the same user id
+    as the JWT ``sub``, a display name and email. Roles must map to this agent's personas/permissions.
+    """
+
+    def search(self, tenant_id: str, *, roles: tuple[str, ...] = (), query: str = "",
+               limit: int = 50, session: Any = None) -> list[Person]:
+        raise NotImplementedError(_TODO)
+
+    def get(self, tenant_id: str, user_id: str, *, session: Any = None) -> Person | None:
         raise NotImplementedError(_TODO)
 
 

@@ -1,22 +1,48 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePermissions } from "../api/identity";
-
-type Kpi = { label: string; value: number; tone?: "info" };
-
-// Real values come from the runs API in Step 2; until then there are no runs.
-const KPIS: Kpi[] = [
-  { label: "Active runs", value: 0 },
-  { label: "Rationalisation Opportunities", value: 0, tone: "info" },
-  { label: "Awaiting approval", value: 0 },
-  { label: "Blocked", value: 0 },
-];
+import { useRunSummary, useRuns } from "../api/runs";
+import { GuidanceCards } from "../components/GuidanceCards";
 
 const COLUMNS = ["Run", "Portfolio scope", "Stage", "Owner", "Risk", "Updated"];
 
-/** Assessments home (screens/01): KPIs, search, run list, next action and agent outcome. */
-export function AssessmentsScreen() {
+function formatUpdated(iso: string) {
+  const d = new Date(iso);
+  return `${d.getDate()} ${d.toLocaleString("en-GB", { month: "short" })} ${d.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+}
+
+function useDebounced<T>(value: T, ms = 250): T {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
+}
+
+/** Assessments home (screens/01 Portfolio Runs): KPIs, search, run list, reopen, start new run. */
+export function AssessmentsScreen({
+  onStartRun,
+  onOpenRun,
+}: {
+  onStartRun: () => void;
+  onOpenRun: (runId: string) => void;
+}) {
   const { has } = usePermissions();
   const [query, setQuery] = useState("");
+  const debounced = useDebounced(query.trim());
+  const summary = useRunSummary();
+  const runs = useRuns(debounced);
+
+  const kpis = [
+    { label: "Active runs", value: summary.data?.active_runs },
+    { label: "Rationalisation Opportunities", value: summary.data?.opportunities },
+    { label: "Awaiting approval", value: summary.data?.awaiting_approval },
+    { label: "Blocked", value: summary.data?.blocked },
+  ];
+  const items = runs.data?.items ?? [];
 
   return (
     <div className="pra-page">
@@ -27,9 +53,9 @@ export function AssessmentsScreen() {
       </div>
 
       <section className="pra-kpis" aria-label="Summary">
-        {KPIS.map((k) => (
+        {kpis.map((k) => (
           <div key={k.label} className="pra-kpi">
-            <div className={`pra-kpi__value${k.tone === "info" ? " pra-kpi__value--info" : ""}`}>{k.value}</div>
+            <div className="pra-kpi__value">{k.value ?? "–"}</div>
             <div className="pra-kpi__label">{k.label}</div>
           </div>
         ))}
@@ -44,7 +70,7 @@ export function AssessmentsScreen() {
           onChange={(e) => setQuery(e.target.value)}
         />
         {has("run.create") && (
-          <button className="pra-button pra-button--primary pra-button--lg" disabled title="Available in Step 2">
+          <button className="pra-button pra-button--primary pra-button--lg" onClick={onStartRun}>
             + Start new run
           </button>
         )}
@@ -56,33 +82,39 @@ export function AssessmentsScreen() {
             <span key={c} role="columnheader">{c}</span>
           ))}
         </div>
-        <div className="pra-table__empty" role="row">
-          <span role="cell">
-            {query ? `No runs match “${query}”.` : "No assessment runs yet. Start a new run to begin."}
-          </span>
-        </div>
+        {items.map((r) => (
+          <button
+            key={r.id}
+            type="button"
+            role="row"
+            className="pra-table__row pra-table__row--link"
+            onClick={() => onOpenRun(r.id)}
+            title={`Open ${r.run_code}`}
+          >
+            <span role="cell" className="pra-strong">{r.name}</span>
+            <span role="cell">{r.portfolio_name}</span>
+            <span role="cell">{r.stage_label}</span>
+            <span role="cell">{r.owner_name}</span>
+            <span role="cell">{r.risk ?? "—"}</span>
+            <span role="cell">{formatUpdated(r.updated_at)}</span>
+          </button>
+        ))}
+        {runs.isSuccess && items.length === 0 && (
+          <div className="pra-table__empty" role="row">
+            <span role="cell">
+              {debounced ? `No runs match “${debounced}”.` : "No assessment runs yet. Start a new run to begin."}
+            </span>
+          </div>
+        )}
+        {runs.isError && (
+          <div className="pra-table__empty" role="row"><span role="cell">Could not load runs.</span></div>
+        )}
       </div>
 
-      <section className="pra-guidance">
-        <div>
-          <h2 className="pra-guidance__title">Next action</h2>
-          <div className="pra-guidance__card">
-            <ol className="pra-steps">
-              <li><span className="pra-steps__num">1</span>Start a new run.</li>
-              <li><span className="pra-steps__num">2</span>Reopen an existing run when needed.</li>
-            </ol>
-          </div>
-        </div>
-        <div>
-          <h2 className="pra-guidance__title">Agent outcome</h2>
-          <div className="pra-guidance__card">
-            <ul className="pra-steps pra-steps--outcome">
-              <li><span className="pra-steps__num">✓</span>Run context is created.</li>
-              <li><span className="pra-steps__num">✓</span>Stage and risk become visible.</li>
-            </ul>
-          </div>
-        </div>
-      </section>
+      <GuidanceCards
+        next={["Start a new run.", "Reopen an existing run when needed."]}
+        outcome={["Run context is created.", "Stage and risk become visible."]}
+      />
     </div>
   );
 }

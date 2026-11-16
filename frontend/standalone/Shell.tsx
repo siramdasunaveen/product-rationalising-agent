@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { useManifest, useMe, type NavItem } from "../src";
 
 function initials(name: string) {
@@ -9,12 +9,15 @@ function initials(name: string) {
 const NOT_SPECIFIED = "Not specified in the user guide yet";
 
 function NavEntry({ item, label, className }: { item: NavItem; label: string; className: string }) {
+  const { pathname } = useLocation();
+  // Run pages (/runs/...) belong to the Assessments area.
+  const inArea = item.path === "/" && pathname.startsWith("/runs");
   if (item.status === "not_specified") {
     return <span className={`${className} ${className}--disabled`} title={NOT_SPECIFIED}>{label}</span>;
   }
   return (
     <NavLink to={item.path} end={item.path === "/"}
-      className={({ isActive }) => `${className}${isActive ? ` ${className}--active` : ""}`}>
+      className={({ isActive }) => `${className}${isActive || inArea ? ` ${className}--active` : ""}`}>
       {label}
     </NavLink>
   );

@@ -54,6 +54,7 @@ notepad .env     # also set PRA_DEMO_PASSWORD (at least 8 characters)
 cd backend
 .\.venv\Scripts\alembic.exe upgrade head
 .\.venv\Scripts\python.exe -m app.cli seed-demo-users
+.\.venv\Scripts\python.exe -m app.cli seed-reference-data      # demo portfolios, markets, product families
 cd ..
 
 # 5. Frontend dependencies

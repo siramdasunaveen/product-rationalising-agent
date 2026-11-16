@@ -5,16 +5,18 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app import __version__
 from app.adapters.registry import Platform, build_platform
-from app.api import auth, health, me
+from app.api import auth, health, me, metadata, runs
 from app.config import Settings, get_settings
 from app.db.session import make_sessionmaker
+from app.services.runs import RunError
 
 API_PREFIX = "/api/rationalisation"
 MANIFEST_PATH = Path(__file__).resolve().parents[2] / "manifest.json"
@@ -61,6 +63,16 @@ def create_app(
 
     app.include_router(health.router)
     app.include_router(me.router, prefix=API_PREFIX)
+    app.include_router(metadata.router, prefix=API_PREFIX)
+    app.include_router(runs.router, prefix=API_PREFIX)
+
+    @app.exception_handler(RunError)
+    def _run_error(_: Request, exc: RunError) -> JSONResponse:
+        return JSONResponse(status_code=exc.status_code, content={"detail": {
+            "code": exc.code, "message": exc.message,
+            "errors": [{"field": e.field, "message": e.message} for e in exc.errors],
+        }})
+
     if settings.is_standalone:
         app.include_router(auth.router, prefix=API_PREFIX)
     return app

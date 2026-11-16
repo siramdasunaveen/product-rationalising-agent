@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Navigate, Route, Routes } from "react-router-dom";
-import { AssessmentsScreen, PlaceholderScreen, useManifest } from "../src";
+import { Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
+import { AssessmentsScreen, CreateRunScopeScreen, PlaceholderScreen, useManifest } from "../src";
 import { tokenStore } from "./auth";
 import { Login } from "./Login";
 import { Shell } from "./Shell";
@@ -38,7 +38,13 @@ function ScreenRoutes() {
   const placeholders = (manifest?.nav ?? []).filter((n) => n.path !== "/");
   return (
     <Routes>
-      <Route path="/" element={<AssessmentsScreen />} />
+      <Route path="/" element={<AssessmentsRoute />} />
+      <Route path="/runs/new" element={<ScopeRoute />} />
+      <Route path="/runs/:runId/scope" element={<ScopeRoute />} />
+      <Route
+        path="/runs/:runId/evidence"
+        element={<PlaceholderScreen title="Evidence Hub" note="Wizard step 2 (Evidence Hub) arrives in build steps 4–6." />}
+      />
       {placeholders.map((n) => (
         <Route
           key={n.key}
@@ -53,5 +59,29 @@ function ScreenRoutes() {
       ))}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+  );
+}
+
+// Route adapters: the screens take callbacks, the host decides the URLs.
+function AssessmentsRoute() {
+  const navigate = useNavigate();
+  return (
+    <AssessmentsScreen
+      onStartRun={() => navigate("/runs/new")}
+      onOpenRun={(id) => navigate(`/runs/${id}/scope`)}
+    />
+  );
+}
+
+function ScopeRoute() {
+  const { runId } = useParams();
+  const navigate = useNavigate();
+  return (
+    <CreateRunScopeScreen
+      key={runId ?? "new"}
+      runId={runId}
+      onCancel={() => navigate("/")}
+      onContinue={(run) => navigate(`/runs/${run.id}/evidence`)}
+    />
   );
 }
