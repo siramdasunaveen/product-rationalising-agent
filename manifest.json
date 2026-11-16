@@ -1,0 +1,58 @@
+{
+  "id": "deepkorce.telco.product-rationalisation",
+  "name": "Product Rationalisation Agent",
+  "vendor": "DeepKorce",
+  "industry": "Telco",
+  "version": "0.1.0",
+  "description": "Governed, evidence-led agent that helps Telco portfolio teams rationalise commercial products. It recommends and explains; people decide and approve.",
+  "api": {
+    "basePath": "/api/rationalisation",
+    "health": "/healthz",
+    "ready": "/readyz",
+    "openapi": "/openapi.json"
+  },
+  "auth": {
+    "type": "jwt",
+    "requiredClaims": ["sub", "tenant_id", "name", "roles"]
+  },
+  "permissions": [
+    { "key": "read", "description": "View runs, evidence, candidates, decisions and approvals" },
+    { "key": "run.create", "description": "Create and edit rationalisation runs" },
+    { "key": "run.start", "description": "Lock configuration and start an analysis run" },
+    { "key": "candidate.view", "description": "View candidates and their evidence" },
+    { "key": "decision.submit", "description": "Submit a decision for approval" },
+    { "key": "evidence.upload", "description": "Upload evidence files" },
+    { "key": "evidence.map", "description": "Map and validate evidence" },
+    { "key": "snapshot.approve", "description": "Approve evidence snapshots" },
+    { "key": "conflict.resolve", "description": "Resolve reconciliation conflicts" },
+    { "key": "request.fulfil", "description": "Fulfil evidence requests" },
+    { "key": "approval.act", "description": "Approve, reject, return or hold decisions" },
+    { "key": "config.scoring", "description": "Manage scoring profiles" },
+    { "key": "config.policy", "description": "Manage policy profiles" },
+    { "key": "config.ai", "description": "Manage the AI runtime and model routing" },
+    { "key": "connector.manage", "description": "Manage source connectors" }
+  ],
+  "suggestedRoles": {
+    "portfolio_manager": ["read", "run.create", "run.start", "candidate.view", "decision.submit"],
+    "product_owner": ["read", "candidate.view", "decision.submit"],
+    "data_steward": ["read", "evidence.upload", "evidence.map", "snapshot.approve", "conflict.resolve"],
+    "evidence_owner": ["read", "request.fulfil"],
+    "commercial_approver": ["read", "approval.act"],
+    "product_approver": ["read", "approval.act"],
+    "architecture_approver": ["read", "approval.act"],
+    "enterprise_architect": ["read", "candidate.view", "approval.act"],
+    "agent_admin": ["read", "config.scoring", "config.policy", "config.ai", "connector.manage"],
+    "viewer": ["read"]
+  },
+  "nav": [
+    { "key": "assessments", "label": "Assessments", "path": "/", "permission": "read", "sidebarLabel": "Assessment Overview" },
+    { "key": "evidence-readiness", "label": "Evidence Readiness", "path": "/evidence-readiness", "permission": "read", "sidebarLabel": "Evidence Readiness" },
+    { "key": "evidence-needed", "label": "Evidence Needed", "path": "/evidence-needed", "permission": "read" },
+    { "key": "opportunities", "label": "Rationalisation Opportunities", "path": "/opportunities", "permission": "candidate.view", "sidebarLabel": "Rationalisation Opportunities" },
+    { "key": "decision-approvals", "label": "Decision Approvals", "path": "/decision-approvals", "permission": "read", "sidebarLabel": "Decision Approvals" },
+    { "key": "transition-plans", "label": "Transition Plans", "path": "/transition-plans", "permission": "read", "status": "not_specified", "sidebarLabel": "Transition Plans" },
+    { "key": "outcomes-benefits", "label": "Outcomes & Benefits", "path": "/outcomes-benefits", "permission": "read", "status": "not_specified" }
+  ],
+  "requiredConnectors": [],
+  "optionalConnectors": ["excel", "salesforce"]
+}

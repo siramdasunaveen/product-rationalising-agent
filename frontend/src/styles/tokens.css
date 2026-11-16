@@ -1,0 +1,42 @@
+/* Design tokens taken from the spec screenshots (docs/source/screens). */
+:root {
+  --color-bg: #f0f0f8;
+  --color-surface: #ffffff;
+  --color-border: #e3e4ea;
+  --color-text: #15151a;
+  --color-text-muted: #5d5f6b;
+  --color-accent: #6e42d6;
+  --color-accent-strong: #5a31b8;
+  --color-brand: #22c55e;
+  --color-track: #dcdce4;
+  --color-accent-soft: #ece4fb;
+  --color-info: #1f7bf2;
+  --color-danger: #c4352b;
+  --color-warning: #b9770e;
+  --color-success: #1d8a4d;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-pill: 999px;
+
+  --shadow-card: 0 1px 2px rgba(20, 20, 40, 0.06);
+  --font: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+button, input, select { font: inherit; }

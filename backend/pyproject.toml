@@ -1,0 +1,39 @@
+[project]
+name = "pra-backend"
+version = "0.1.0"
+description = "Product Rationalisation Agent (DeepKorce, Telco) - backend"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "sqlalchemy>=2.0.30",
+  "psycopg[binary]>=3.2",
+  "alembic>=1.13",
+  "pydantic>=2.7",
+  "pydantic-settings>=2.3",
+  "redis>=5.0",
+  "rq>=1.16",
+  "openpyxl>=3.1",
+  "cryptography>=42",
+  "pyjwt>=2.8",
+  "jsonschema>=4.22",
+  "httpx>=0.27",
+  "anthropic>=0.40",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2",
+  "fakeredis>=2.23",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

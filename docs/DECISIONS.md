@@ -8,6 +8,41 @@
 - Connectors are in scope from the start, Excel first: build the connector framework with the Excel adapter
   first, then Salesforce, then other systems.
 
+## Step 1 working agreements (16 Nov 2026, developer OK'd the plan)
+- Python: `requires-python >= 3.12`; developer machine runs 3.13. Docker images will pin 3.12.
+- DB tests run against real Postgres (`pra_test` database in docker-compose), not SQLite, because
+  we rely on schemas and triggers. Redis is faked (fakeredis) in tests.
+- Work happens on a branch per step (`step-1-skeleton`); the developer commits.
+- Default AI model: `claude-opus-5-5` (configurable via `PRA_ANTHROPIC_MODEL`), with JSON-schema
+  structured outputs and server-side refusal fallback; no-LLM mode is the default provider.
+- Audit hash chain is per tenant (each tenant's chain verifies independently); DB triggers block
+  UPDATE/DELETE/TRUNCATE on `audit_event`.
+- Standalone sign-in is **email + password** (developer's request, 16 Nov 2026), replacing the
+  persona/tenant picker. Users live in `app_user` (tenant comes from the user record, email unique
+  and case-insensitive). Passwords are hashed with stdlib scrypt. After 5 failures, the account is
+  locked for 15 minutes. Success and failure are audited (`auth.login_succeeded` /
+  `auth.login_failed` with a reason). The error message is always generic. No sign-up page: users
+  come from `python -m app.cli seed-demo-users` / `create-user`. `POST /auth/login` is mounted only
+  in standalone mode; in AI Studio the studio's sign-in replaces it, and the JWT claims stay the same.
+- The RQ worker uses a non-forking worker with thread timeouts so it runs on Windows.
+- The UI builds its nav from `GET /manifest`, filtered by the permissions in `GET /me`.
+- New UI design supplied by the developer (16 Nov 2026) renames the navigation. The new names are
+  **UI labels only**; internal names, permissions and API paths keep the user guide's terms:
+  | UI label | Spec / internal term |
+  |---|---|
+  | Assessments (home; sidebar "Assessment Overview") | Portfolio Runs / runs |
+  | Evidence Readiness | Evidence / evidence readiness |
+  | Evidence Needed | Evidence Requests |
+  | Rationalisation Opportunities | Candidates (`candidate.view`) |
+  | Decision Approvals | Approvals |
+  | Transition Plans | Packages (still not specified) |
+  | Outcomes & Benefits | Benefits (still not specified) |
+  Layout: header, top tabs with purple underline, WORKSPACE sidebar (items with `sidebarLabel` in
+  manifest.json), KPI tiles, run table, Next action / Agent outcome cards. KPIs and the run table show
+  real data only (empty until Step 2).
+- Minimum password length is 8 (NIST SP 800-63B). Changing `PRA_DEMO_PASSWORD` does not change
+  existing users; run `python -m app.cli seed-demo-users --reset-passwords`.
+
 ## Proposed defaults (AI Studio contract not decided yet; confirm with the colleague)
 | Topic | Default | Status |
 |---|---|---|

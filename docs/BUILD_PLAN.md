@@ -2,7 +2,7 @@
 
 Status values: TODO · IN PROGRESS · DONE. Do one step at a time; each step ends with passing tests.
 
-## Step 1: Skeleton and foundations · TODO
+## Step 1: Skeleton and foundations · DONE
 - Repo layout per CLAUDE.md; `docker-compose.yml` (Postgres 16, Redis 7); `.env.example`; README with PowerShell commands.
 - Settings (pydantic-settings, prefix `PRA_`), DB session, Alembic with schema `rationalisation`.
 - Ports + local adapters: auth (dev JWT login), ai (Anthropic + "none"), storage (disk), jobs (RQ), audit (DB table,
