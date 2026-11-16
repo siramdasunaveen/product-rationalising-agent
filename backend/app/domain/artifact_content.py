@@ -390,10 +390,24 @@ EVIDENCE_TEMPLATE_JSON = {
                         "additionalProperties": False,
                         "properties": {"entity": ENTITY_NAME, "field": FIELD_NAME},
                     },
-                    "relationship": {"type": "string", "pattern": r"^[A-Z][A-Z0-9_]*$", "maxLength": 64},
                     "lookup": ARTIFACT_KEY,
                     "description": {"type": "string", "maxLength": 500},
                     "example": {"type": "string", "maxLength": 100},
+                },
+            },
+        },
+        # Graph edges the template's rows carry, e.g. Product ID -> Service Spec ID (DECOMPOSES_TO).
+        "relationships": {
+            "type": "array", "maxItems": 20,
+            "items": {
+                "type": "object",
+                "required": ["fromEntity", "fromColumn", "toEntity", "toColumn"],
+                "additionalProperties": False,
+                "properties": {
+                    "name": {"type": "string", "pattern": r"^[A-Z][A-Z0-9_]*$", "maxLength": 64},
+                    "nameColumn": {"type": "string", "maxLength": 100},
+                    "fromEntity": ENTITY_NAME, "fromColumn": {"type": "string", "maxLength": 100},
+                    "toEntity": ENTITY_NAME, "toColumn": {"type": "string", "maxLength": 100},
                 },
             },
         },
@@ -418,6 +432,12 @@ def check_evidence_template(content: dict) -> list[FieldError]:
     for name, members in groups.items():
         if len(members) < 2:
             errors.append(FieldError(f"columns[{members[0]}].oneOfGroup", f"Group {name} needs at least two columns"))
+    for i, rel in enumerate(content.get("relationships", [])):
+        if bool(rel.get("name")) == bool(rel.get("nameColumn")):
+            errors.append(FieldError(f"relationships[{i}]", "Give either a fixed name or a name column"))
+        for col in (rel["fromColumn"], rel["toColumn"], rel.get("nameColumn")):
+            if col and " ".join(col.split()).casefold() not in seen:
+                errors.append(FieldError(f"relationships[{i}]", f"Column {col!r} is not a template column"))
     return errors
 
 
@@ -431,8 +451,12 @@ def check_evidence_template_against(content: dict, canonical: dict) -> list[Fiel
                 errors.append(FieldError(f"columns[{i}].target.entity", f"Entity {t['entity']} is not in the schema"))
             elif find_field(canonical, t["entity"], t["field"]) is None:
                 errors.append(FieldError(f"columns[{i}].target.field", f"Field {t['field']} is not in {t['entity']}"))
-        if "relationship" in col and col["relationship"] not in rel_names:
-            errors.append(FieldError(f"columns[{i}].relationship", f"Relationship {col['relationship']} is not in the schema"))
+    for i, rel in enumerate(content.get("relationships", [])):
+        for side in ("fromEntity", "toEntity"):
+            if not has_entity(canonical, rel[side]):
+                errors.append(FieldError(f"relationships[{i}].{side}", f"Entity {rel[side]} is not in the schema"))
+        if rel.get("name") and rel["name"] not in rel_names:
+            errors.append(FieldError(f"relationships[{i}].name", f"Relationship {rel['name']} is not in the schema"))
     return errors
 
 

@@ -297,3 +297,187 @@ class EvidenceUpload(IdMixin, TenantMixin, CreatedAtMixin, Base):
         ForeignKey(f"{SCHEMA}.source_schema_version.id"), nullable=True)
     confirmed_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# Mapping Rules (step 5). Rules of a submitted version and all staged output are immutable (triggers in
+# migration 0006).
+# ---------------------------------------------------------------------------
+
+class MappingDefinition(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """The mapping of one evidence source (run + domain) to the canonical schema; it has versions."""
+
+    __tablename__ = "mapping_definition"
+    __table_args__ = (UniqueConstraint("source_id", name="uq_mapping_definition_source"),)
+
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.run.id"), nullable=False, index=True)
+    source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.evidence_source.id"), nullable=False)
+    domain: Mapped[str] = mapped_column(String(40), nullable=False)
+    created_by: Mapped[str] = mapped_column(String(128), nullable=False)
+
+
+OPEN_MAPPING_STATUSES = ("DRAFT", "VALIDATING", "VALIDATION_FAILED", "READY_FOR_REVIEW")
+
+
+class MappingVersion(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    __tablename__ = "mapping_version"
+    __table_args__ = (
+        UniqueConstraint("definition_id", "version", name="uq_mapping_version_number"),
+        Index("uq_mapping_version_published", "definition_id", unique=True,
+              postgresql_where=text("status = 'PUBLISHED'")),
+        Index("uq_mapping_version_open", "definition_id", unique=True,
+              postgresql_where=text("status IN ('DRAFT', 'VALIDATING', 'VALIDATION_FAILED', 'READY_FOR_REVIEW')")),
+    )
+
+    definition_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.mapping_definition.id"), nullable=False,
+                                                     index=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    parent_version_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey(f"{SCHEMA}.mapping_version.id"),
+                                                                nullable=True)
+    source_schema_version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(f"{SCHEMA}.source_schema_version.id"), nullable=False)
+    canonical_ref: Mapped[str] = mapped_column(String(80), nullable=False)
+    canonical_digest: Mapped[str] = mapped_column(String(71), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    content_hash: Mapped[str | None] = mapped_column(String(71), nullable=True)
+    warnings_acknowledged: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    lock_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    submitted_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    approved_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    published_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class MappingRuleRow(IdMixin, TenantMixin, Base):
+    __tablename__ = "mapping_rule"
+    __table_args__ = (UniqueConstraint("version_id", "rule_key", name="uq_mapping_rule_key"),)
+
+    version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.mapping_version.id"), nullable=False,
+                                                  index=True)
+    rule_key: Mapped[str] = mapped_column(String(16), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    mapping_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    source_column: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    target_entity: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    target_field: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    params: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)  # refs, derived, relationship
+    required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    null_handling: Mapped[str] = mapped_column(String(16), nullable=False)
+    default_value: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    suggestion_confidence: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    proposed_by: Mapped[str] = mapped_column(String(16), nullable=False)
+
+
+class MappingValidationRun(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    __tablename__ = "mapping_validation_run"
+
+    version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.mapping_version.id"), nullable=False,
+                                                  index=True)
+    upload_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.evidence_upload.id"), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(71), nullable=False)  # the rules that were validated
+    status: Mapped[str] = mapped_column(String(16), nullable=False)  # RUNNING | PASS | WARNING | BLOCKED | FAILED
+    result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    job_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    requested_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class MappingApproval(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """Review decision on an exact version and content hash. Append-only."""
+
+    __tablename__ = "mapping_approval"
+
+    version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.mapping_version.id"), nullable=False,
+                                                  index=True)
+    decision: Mapped[str] = mapped_column(String(16), nullable=False)  # APPROVE | RETURN | REJECT
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    content_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    actor_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    actor_name: Mapped[str] = mapped_column(String(120), nullable=False)
+
+
+class MappingExecution(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """One apply of a mapping version to one upload. Idempotent per (file hash, mapping version)."""
+
+    __tablename__ = "mapping_execution"
+    __table_args__ = (UniqueConstraint("tenant_id", "execution_key", name="uq_mapping_execution_key"),
+                      UniqueConstraint("tenant_id", "idempotency_key", name="uq_mapping_execution_idem"))
+
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.run.id"), nullable=False, index=True)
+    upload_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.evidence_upload.id"), nullable=False)
+    mapping_version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.mapping_version.id"),
+                                                          nullable=False)
+    execution_key: Mapped[str] = mapped_column(String(71), nullable=False)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)  # QUEUED | RUNNING | SUCCEEDED | FAILED
+    job_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    counts: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    rejected_rows: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    conflicts: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    output_hash: Mapped[str | None] = mapped_column(String(71), nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    requested_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class StagedRecord(IdMixin, TenantMixin, Base):
+    """A canonical record produced by one mapping execution (not yet reconciled). Append-only."""
+
+    __tablename__ = "staged_record"
+    __table_args__ = (UniqueConstraint("execution_id", "entity", "record_key", name="uq_staged_record_key"),)
+
+    execution_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.mapping_execution.id"), nullable=False,
+                                                    index=True)
+    entity: Mapped[str] = mapped_column(String(64), nullable=False)
+    record_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    values: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    source_rows: Mapped[list[int]] = mapped_column(ARRAY(Integer), nullable=False)
+
+
+class StagedRelationship(TenantMixin, Base):
+    __tablename__ = "staged_relationship"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    execution_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.mapping_execution.id"), nullable=False,
+                                                    index=True)
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    from_entity: Mapped[str] = mapped_column(String(64), nullable=False)
+    from_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    to_entity: Mapped[str] = mapped_column(String(64), nullable=False)
+    to_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    source_row: Mapped[int] = mapped_column(Integer, nullable=False)
+    rule_key: Mapped[str] = mapped_column(String(16), nullable=False)
+
+
+class FieldLineage(TenantMixin, Base):
+    """Where one staged field value came from (spec: lineage record)."""
+
+    __tablename__ = "field_lineage"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    execution_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.mapping_execution.id"), nullable=False,
+                                                    index=True)
+    staged_record_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.staged_record.id"), nullable=False,
+                                                        index=True)
+    canonical_entity: Mapped[str] = mapped_column(String(64), nullable=False)
+    canonical_field: Mapped[str] = mapped_column(String(64), nullable=False)
+    canonical_value: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON text
+    source_system: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    source_field: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    source_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    upload_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    sheet: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_row: Mapped[int] = mapped_column(Integer, nullable=False)
+    mapping_rule_key: Mapped[str] = mapped_column(String(16), nullable=False)
+    mapping_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    lookup_ref: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    transform_ref: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    crosswalk_ref: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    mapping_version_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    snapshot_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)  # set by step 6 snapshots

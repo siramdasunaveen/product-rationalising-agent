@@ -1,17 +1,21 @@
-"""Seed the registries of a tenant with TELCO-CANONICAL@1.0 and the starter lookups and transforms.
+"""Seed the registries of a tenant with TELCO-CANONICAL@1.0, starter lookups and transforms, and
+the governed Excel templates of the evidence domains.
 
-Idempotent: artifacts whose key already exists are left alone (change them by publishing new versions).
+Idempotent. Artifacts that do not exist are created and published. Artifacts that exist are upgraded only
+when their published version was itself published by the seed and the seed content has changed: the
+seed then clones it as a new minor version and publishes that (the old one becomes SUPERSEDED, so runs
+that pinned it keep it). Artifacts a person has changed, or with a draft open, are never touched.
 """
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import Artifact
-from app.domain.artifacts import FIRST_VERSION, ArtifactKind
+from app.db.models import Artifact, ArtifactVersion
+from app.domain.artifacts import FIRST_VERSION, ArtifactKind, ArtifactStatus, Bump, format_ref
 from app.ports.audit import AuditLog
 from app.ports.auth import Principal
 from app.seed.telco import CANONICAL_KEY, LOOKUPS, TELCO_CANONICAL, TEMPLATES, TRANSFORMS
-from app.services.artifacts import create_artifact, publish
+from app.services.artifacts import clone_version, create_artifact, list_versions, publish, update_draft, version_of
 
 SEED_ACTOR = "system:seed"
 
@@ -29,15 +33,33 @@ def seed_items() -> list[tuple[ArtifactKind, str, str, dict]]:
     return items
 
 
+def _upgrade(session: Session, audit: AuditLog, principal: Principal, kind: ArtifactKind, artifact: Artifact,
+             content: dict) -> str | None:
+    versions = list_versions(session, artifact)
+    if any(v.status == ArtifactStatus.DRAFT for v in versions):
+        return None
+    published: ArtifactVersion | None = next((v for v in versions if v.status == ArtifactStatus.PUBLISHED), None)
+    if published is None or published.published_by != SEED_ACTOR or published.content == content:
+        return None
+    if versions[0].id != published.id:  # a person published something newer and retired/deprecated it
+        return None
+    _, draft = clone_version(session, audit, principal, kind, artifact.id, version_of(published), Bump.MINOR,
+                             "Seed content updated")
+    _, draft = update_draft(session, audit, principal, kind, artifact.id, version_of(draft),
+                            {"content": content}, draft.lock_version)
+    publish(session, audit, principal, kind, artifact.id, version_of(draft), draft.lock_version)
+    return format_ref(artifact.key, version_of(draft))
+
+
 def seed_artifacts(session: Session, audit: AuditLog, tenant_id: str) -> dict[str, list[str]]:
-    """Create and publish each seed artifact that does not exist yet. Canonical schema goes first
-    because lookups are checked against it."""
+    """Create/upgrade the seed artifacts. Canonical schema goes first because others are checked against it."""
     principal = seed_principal(tenant_id)
-    result: dict[str, list[str]] = {"created": [], "existing": []}
+    result: dict[str, list[str]] = {"created": [], "upgraded": [], "existing": []}
     for kind, key, name, content in seed_items():
-        exists = session.scalar(select(Artifact.id).where(Artifact.tenant_id == tenant_id, Artifact.key == key))
-        if exists:
-            result["existing"].append(key)
+        artifact = session.scalar(select(Artifact).where(Artifact.tenant_id == tenant_id, Artifact.key == key))
+        if artifact is not None:
+            ref = _upgrade(session, audit, principal, kind, artifact, content)
+            result["upgraded" if ref else "existing"].append(ref or key)
             continue
         artifact, v = create_artifact(session, audit, principal, kind, key=key, name=name, content=content,
                                       description=content.get("description"),

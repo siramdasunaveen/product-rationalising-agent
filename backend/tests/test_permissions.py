@@ -27,6 +27,9 @@ def test_registry_permissions():
     publishers = {k for k in PERSONAS if P.REGISTRY_PUBLISH in permissions_for_roles([k])}
     assert managers == {"data_steward", "agent_admin"}
     assert publishers == {"agent_admin"}
+    approvers = {k for k in PERSONAS if P.MAPPING_APPROVE in permissions_for_roles([k])}
+    assert approvers == {"data_steward", "agent_admin"}
+    assert {k for k in PERSONAS if P.MAPPING_PUBLISH in permissions_for_roles([k])} == {"agent_admin"}
 
 
 def test_data_steward_cannot_submit_decisions_or_approve():

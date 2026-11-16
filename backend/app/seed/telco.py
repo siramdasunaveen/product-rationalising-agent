@@ -236,9 +236,18 @@ def _col(header: str, entity: str | None = None, field: str | None = None, *, re
     return col
 
 
-def _template(domain: str, description: str, columns: list[dict]) -> dict:
-    return {"description": description, "domain": domain, "canonicalSchema": CANONICAL_KEY,
-            "sheetName": "Data", "columns": columns}
+def _template(domain: str, description: str, columns: list[dict], relationships: list[dict] | None = None) -> dict:
+    content = {"description": description, "domain": domain, "canonicalSchema": CANONICAL_KEY,
+               "sheetName": "Data", "columns": columns}
+    if relationships:
+        content["relationships"] = relationships
+    return content
+
+
+def _rel(from_entity: str, from_column: str, to_entity: str, to_column: str, *, name: str | None = None,
+         name_column: str | None = None) -> dict:
+    rel = {"fromEntity": from_entity, "fromColumn": from_column, "toEntity": to_entity, "toColumn": to_column}
+    return rel | ({"name": name} if name else {"nameColumn": name_column})
 
 
 TEMPLATES: list[tuple[str, str, dict]] = [
@@ -255,7 +264,7 @@ TEMPLATES: list[tuple[str, str, dict]] = [
             _col("Segment", "Product", "segment", example="Residential"),
             _col("Channel", "Product", "channel", example="Online"),
             _col("Description", "Product", "description"),
-        ])),
+        ], [_rel("Offer", "Offer ID", "Product", "Product ID", name="INCLUDES")])),
     ("TPL-CPQ", "CPQ Product Configuration template", _template(
         "CPQ", "One row per configuration rule of a product.", [
             _col("Product ID", "CpqRule", "productId", required=True, example="PRD-1001"),
@@ -295,21 +304,26 @@ TEMPLATES: list[tuple[str, str, dict]] = [
         ])),
     ("TPL-TECHNICAL-CATALOG", "Technical Product / Service Catalog template", _template(
         "TECHNICAL_CATALOG", "Commercial product to CFS/RFS decomposition.", [
-            _col("Product ID", "Product", "productId", required=True, example="PRD-1001"),
+            _col("Product ID", required=True, example="PRD-1001",
+                 description="Commercial product decomposed into this service (relationship endpoint)"),
             _col("Service Spec ID", "ServiceSpec", "serviceSpecId", required=True, example="CFS-FTTP-INTERNET"),
             _col("Service Type", "ServiceSpec", "serviceType", required=True, example="Internet access"),
-            _col("Relationship Type", required=True, relationship="DECOMPOSES_TO",
-                 description="DECOMPOSES_TO, REALIZED_BY or USES_RESOURCE", example="DECOMPOSES_TO"),
+            _col("Relationship Type", required=True,
+                 description="Relationship from the product to the service, e.g. DECOMPOSES_TO",
+                 example="DECOMPOSES_TO"),
             _col("CFS/RFS", "ServiceSpec", "specCategory", lookup="SERVICE-SPEC-CATEGORY", example="CFS"),
             _col("Parent Service", "ServiceSpec", "parentServiceSpecId"),
             _col("Resource Spec ID", "ResourceSpec", "resourceSpecId"),
             _col("Effective From", "ServiceSpec", "effectiveFrom"),
             _col("Effective To", "ServiceSpec", "effectiveTo"),
-        ])),
+        ], [_rel("Product", "Product ID", "ServiceSpec", "Service Spec ID", name_column="Relationship Type"),
+            _rel("ServiceSpec", "Service Spec ID", "ResourceSpec", "Resource Spec ID", name="USES_RESOURCE")])),
     ("TPL-PROVISIONING", "Provisioning & Activation template", _template(
         "PROVISIONING", "Provisioning workflows and rules; give a Product ID or a Service Spec ID on each row.", [
-            _col("Product ID", "Product", "productId", oneOfGroup="subject", example="PRD-1001"),
-            _col("Service Spec ID", "ServiceSpec", "serviceSpecId", oneOfGroup="subject"),
+            _col("Product ID", oneOfGroup="subject", example="PRD-1001",
+                 description="Product provisioned by this workflow (relationship endpoint)"),
+            _col("Service Spec ID", oneOfGroup="subject",
+                 description="Service provisioned by this workflow (relationship endpoint)"),
             _col("Workflow ID", "ProvisioningWorkflow", "workflowId", required=True, example="WF-FTTP-ACT"),
             _col("Rule/Action", "ProvisioningWorkflow", "ruleAction", required=True, example="Activate ONT"),
             _col("Target System", "ProvisioningWorkflow", "targetSystem", required=True, example="Orchestrator"),
@@ -319,7 +333,8 @@ TEMPLATES: list[tuple[str, str, dict]] = [
             _col("Exception Code", "ProvisioningWorkflow", "exceptionCode"),
             _col("Effective From", "ProvisioningWorkflow", "effectiveFrom"),
             _col("Effective To", "ProvisioningWorkflow", "effectiveTo"),
-        ])),
+        ], [_rel("Product", "Product ID", "ProvisioningWorkflow", "Workflow ID", name="PROVISIONED_BY"),
+            _rel("ServiceSpec", "Service Spec ID", "ProvisioningWorkflow", "Workflow ID", name="PROVISIONED_BY")])),
     ("TPL-INVENTORY", "Service / Resource Inventory template", _template(
         "INVENTORY", "Aggregated counts only; no service instances or subscriber identifiers.", [
             _col("Service Instance Aggregate Key", "InventoryAggregate", "aggregateKey", required=True,

@@ -58,11 +58,13 @@ export function EvidenceHubScreen({
   onBack,
   onContinue,
   onExit,
+  onOpenMapping,
 }: {
   runId: string;
   onBack: () => void;
   onContinue: () => void;
   onExit: () => void;
+  onOpenMapping?: (domain: string) => void;
 }) {
   const { has } = usePermissions();
   const evidence = useEvidence(runId);
@@ -190,7 +192,7 @@ export function EvidenceHubScreen({
 
       {openDomain && (
         <ExcelPanel key={openDomain.key} runId={runId} domain={openDomain} canUpload={canUpload && openDomain.selected}
-          onClose={() => setOpen(null)} />
+          onClose={() => setOpen(null)} onOpenMapping={onOpenMapping} />
       )}
 
       <div className="pra-form__actions pra-hub__actions">
@@ -260,11 +262,13 @@ function ExcelPanel({
   domain,
   canUpload,
   onClose,
+  onOpenMapping,
 }: {
   runId: string;
   domain: EvidenceDomain;
   canUpload: boolean;
   onClose: () => void;
+  onOpenMapping?: (domain: string) => void;
 }) {
   const upload = useUploadFile(runId);
   const [chosen, setChosen] = useState<string | null>(null);
@@ -366,12 +370,17 @@ function ExcelPanel({
         </table>
       )}
 
-      {selectedId && <UploadView runId={runId} uploadId={selectedId} canConfirm={canUpload} />}
+      {selectedId && (
+        <UploadView runId={runId} uploadId={selectedId} canConfirm={canUpload}
+          onOpenMapping={onOpenMapping ? () => onOpenMapping(domain.key) : undefined} />
+      )}
     </section>
   );
 }
 
-function UploadView({ runId, uploadId, canConfirm }: { runId: string; uploadId: string; canConfirm: boolean }) {
+function UploadView({ runId, uploadId, canConfirm, onOpenMapping }: {
+  runId: string; uploadId: string; canConfirm: boolean; onOpenMapping?: () => void;
+}) {
   const detail = useUploadDetail(runId, uploadId);
   const u = detail.data;
   if (!u) return <p className="pra-muted">Loading file details…</p>;
@@ -387,10 +396,12 @@ function UploadView({ runId, uploadId, canConfirm }: { runId: string; uploadId: 
       </div>
     );
   }
-  return <SheetChooser key={u.id} runId={runId} upload={u} canConfirm={canConfirm} />;
+  return <SheetChooser key={u.id} runId={runId} upload={u} canConfirm={canConfirm} onOpenMapping={onOpenMapping} />;
 }
 
-function SheetChooser({ runId, upload: u, canConfirm }: { runId: string; upload: UploadDetail; canConfirm: boolean }) {
+function SheetChooser({ runId, upload: u, canConfirm, onOpenMapping }: {
+  runId: string; upload: UploadDetail; canConfirm: boolean; onOpenMapping?: () => void;
+}) {
   const sheets = u.discovery?.sheets ?? [];
   const [sheetName, setSheetName] = useState(u.schema?.sheet_name ?? u.discovery?.default_sheet ?? sheets[0]?.name ?? "");
   const [override, setOverride] = useState<SheetInfo | null>(null);
@@ -518,6 +529,9 @@ function SheetChooser({ runId, upload: u, canConfirm }: { runId: string; upload:
             title={info && !info.valid ? "This sheet cannot be used" : undefined}>
             {confirmedHere ? "Confirmed" : confirm.isPending ? "Confirming…" : "Confirm sheet and header"}
           </button>
+        )}
+        {u.schema && onOpenMapping && (
+          <button type="button" className="pra-button pra-button--ghost" onClick={onOpenMapping}>Map columns →</button>
         )}
       </div>
     </div>

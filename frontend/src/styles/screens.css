@@ -340,6 +340,36 @@
 .pra-preview__col { color: var(--color-text-muted); font-weight: 400; margin-right: 4px; }
 .pra-preview__type { display: block; font-weight: 400; font-size: 10px; color: var(--color-text-muted); }
 
+/* ---- Mapping Rules ---- */
+.pra-map__head { display: grid; gap: var(--space-3); margin-bottom: var(--space-4); }
+.pra-map__versions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.pra-map__facts { display: flex; gap: var(--space-6); flex-wrap: wrap; font-size: 12px; align-items: center; }
+.pra-map__actions { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; }
+.pra-map__ack { display: flex; gap: var(--space-2); align-items: center; font-size: 12px; }
+.pra-map__note { margin: 0; font-size: 12px; font-weight: 600; }
+.pra-map__section { margin-top: var(--space-4); }
+.pra-map__grid-card { margin-top: var(--space-4); }
+.pra-map__grid td { vertical-align: top; white-space: normal; }
+.pra-map__grid .pra-input { padding: 6px 8px; font-size: 12px; min-width: 90px; }
+.pra-map__grid select.pra-input { max-width: 230px; }
+.pra-map__samples { max-width: 170px; color: var(--color-text-muted); font-size: 11px; }
+.pra-map__grid .pra-map__by { white-space: nowrap; margin: 0; }
+.pra-map__unmapped td { background: #fafafc; }
+.pra-map__by { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: var(--radius-pill); background: #eeeef3; margin: 0 var(--space-2); }
+.pra-map__by--template, .pra-map__by--prior_mapping { background: #e3f5ea; color: var(--color-success); }
+.pra-map__by--ai { background: #fff3dc; color: var(--color-warning); }
+.pra-map__sub { font-size: 13px; margin: var(--space-4) 0 var(--space-2); }
+.pra-map__other { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2); font-size: 12px; }
+.pra-map__stats { display: flex; gap: var(--space-6); flex-wrap: wrap; font-size: 12px; margin-bottom: var(--space-3); }
+.pra-map__issues { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2); font-size: 12px; }
+.pra-map__issue { padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); border-left: 4px solid; }
+.pra-map__issue--blocking { border-color: var(--color-danger); background: #fdeeee; }
+.pra-map__issue--warning { border-color: var(--color-warning); background: #fff7ea; }
+.pra-map__details { margin-top: var(--space-3); font-size: 12px; }
+.pra-map__review textarea { width: 100%; margin-bottom: var(--space-3); font-family: inherit; }
+.pra-map__records { margin-top: var(--space-4); }
+.pra-map__records code { font-size: 11px; }
+
 @media (max-width: 900px) {
   .pra-hub { grid-template-columns: 1fr; }
   .pra-hub__arrow { transform: rotate(90deg); }

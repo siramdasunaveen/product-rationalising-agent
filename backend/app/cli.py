@@ -93,6 +93,8 @@ def seed_artifacts_cmd(args: argparse.Namespace) -> int:
         result = seed_artifacts(s, DbAuditLog(), args.tenant)
     for ref in result["created"]:
         print(f"published {ref}")
+    for ref in result["upgraded"]:
+        print(f"upgraded  {ref}")
     for key in result["existing"]:
         print(f"exists    {key}")
     return 0

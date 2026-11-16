@@ -37,7 +37,7 @@ field specification were supplied; revised again the same day after the 5 candid
 - Screen: wizard step 2 Evidence Hub (screen 03) — domain cards + harmonisation pipeline.
 - Done when: each domain template can be uploaded and its schema discovered; bad files rejected with clear reasons.
 
-## Step 5: Mapping Rules · TODO
+## Step 5: Mapping Rules · DONE
 - MappingDefinition / MappingVersion / MappingRule; types DIRECT, LOOKUP, TRANSFORM, CROSSWALK,
   RELATIONSHIP, DERIVED; deterministic suggestions (names, aliases, types, prior mappings) with confidence +
   proposedBy; optional AI suggestion sees only headers + 5 sample rows.

@@ -10,4 +10,5 @@ export type { Me, Manifest, NavItem } from "./api/identity";
 export { AssessmentsScreen } from "./screens/AssessmentsScreen";
 export { CreateRunScopeScreen } from "./screens/CreateRunScopeScreen";
 export { EvidenceHubScreen } from "./screens/EvidenceHubScreen";
+export { MappingRulesScreen } from "./screens/MappingRulesScreen";
 export { PlaceholderScreen } from "./screens/PlaceholderScreen";

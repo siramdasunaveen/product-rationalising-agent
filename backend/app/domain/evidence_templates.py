@@ -22,8 +22,7 @@ def match_template(template: dict, headers: list[str]) -> dict[str, Any]:
         found = present.get(_norm(col["header"]))
         if found is not None:
             matched.append({"template_header": col["header"], "column": found, "target": col.get("target"),
-                            "relationship": col.get("relationship"), "lookup": col.get("lookup"),
-                            "required": bool(col.get("required"))})
+                            "lookup": col.get("lookup"), "required": bool(col.get("required"))})
         elif col.get("required"):
             required_missing.append(col["header"])
         if "oneOfGroup" in col:

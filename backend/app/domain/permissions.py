@@ -27,6 +27,8 @@ class Permission(StrEnum):
     REGISTRY_READ = "registry.read"
     REGISTRY_MANAGE = "registry.manage"
     REGISTRY_PUBLISH = "registry.publish"
+    MAPPING_APPROVE = "mapping.approve"
+    MAPPING_PUBLISH = "mapping.publish"
 
 
 PERMISSION_DESCRIPTIONS: dict[Permission, str] = {
@@ -48,6 +50,8 @@ PERMISSION_DESCRIPTIONS: dict[Permission, str] = {
     Permission.REGISTRY_READ: "View registry artifacts (canonical schema, lookups, transforms, crosswalks)",
     Permission.REGISTRY_MANAGE: "Create, edit and clone draft registry artifacts",
     Permission.REGISTRY_PUBLISH: "Publish, deprecate and retire registry artifacts",
+    Permission.MAPPING_APPROVE: "Approve, return or reject submitted mapping versions (not your own)",
+    Permission.MAPPING_PUBLISH: "Publish approved mapping versions",
 }
 
 # Approval scopes: which approval steps an approver may act on.
@@ -68,7 +72,7 @@ PERSONAS: dict[str, tuple[str, frozenset[Permission], tuple[str, ...]]] = {
     "data_steward": (
         "Data Steward",
         frozenset({P.EVIDENCE_UPLOAD, P.EVIDENCE_MAP, P.SNAPSHOT_APPROVE, P.CONFLICT_RESOLVE, RR,
-                   P.REGISTRY_MANAGE}),
+                   P.REGISTRY_MANAGE, P.MAPPING_APPROVE}),
         (),
     ),
     "evidence_owner": ("Evidence Owner", frozenset({P.REQUEST_FULFIL, RR}), ()),
@@ -87,7 +91,7 @@ PERSONAS: dict[str, tuple[str, frozenset[Permission], tuple[str, ...]]] = {
     "agent_admin": (
         "Agent Admin",
         frozenset({P.CONFIG_SCORING, P.CONFIG_POLICY, P.CONFIG_AI, P.CONNECTOR_MANAGE, RR,
-                   P.REGISTRY_MANAGE, P.REGISTRY_PUBLISH}),
+                   P.REGISTRY_MANAGE, P.REGISTRY_PUBLISH, P.MAPPING_APPROVE, P.MAPPING_PUBLISH}),
         (),
     ),
     "viewer": ("Viewer", frozenset(), ()),

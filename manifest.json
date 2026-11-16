@@ -33,18 +33,20 @@
     { "key": "connector.manage", "description": "Manage source connectors" },
     { "key": "registry.read", "description": "View registry artifacts (canonical schema, lookups, transforms, crosswalks)" },
     { "key": "registry.manage", "description": "Create, edit and clone draft registry artifacts" },
-    { "key": "registry.publish", "description": "Publish, deprecate and retire registry artifacts" }
+    { "key": "registry.publish", "description": "Publish, deprecate and retire registry artifacts" },
+    { "key": "mapping.approve", "description": "Approve, return or reject submitted mapping versions (not your own)" },
+    { "key": "mapping.publish", "description": "Publish approved mapping versions" }
   ],
   "suggestedRoles": {
     "portfolio_manager": ["read", "run.create", "run.start", "candidate.view", "decision.submit", "evidence.upload", "registry.read"],
     "product_owner": ["read", "candidate.view", "decision.submit", "registry.read"],
-    "data_steward": ["read", "evidence.upload", "evidence.map", "snapshot.approve", "conflict.resolve", "registry.read", "registry.manage"],
+    "data_steward": ["read", "evidence.upload", "evidence.map", "snapshot.approve", "conflict.resolve", "registry.read", "registry.manage", "mapping.approve"],
     "evidence_owner": ["read", "request.fulfil", "registry.read"],
     "commercial_approver": ["read", "approval.act", "registry.read"],
     "product_approver": ["read", "approval.act", "registry.read"],
     "architecture_approver": ["read", "approval.act", "registry.read"],
     "enterprise_architect": ["read", "candidate.view", "approval.act", "registry.read"],
-    "agent_admin": ["read", "config.scoring", "config.policy", "config.ai", "connector.manage", "registry.read", "registry.manage", "registry.publish"],
+    "agent_admin": ["read", "config.scoring", "config.policy", "config.ai", "connector.manage", "registry.read", "registry.manage", "registry.publish", "mapping.approve", "mapping.publish"],
     "viewer": ["read"]
   },
   "nav": [

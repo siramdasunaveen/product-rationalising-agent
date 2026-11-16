@@ -88,6 +88,29 @@
 | Live connectors | Source types API_CONNECTOR, SECURE_QUERY and SCHEDULED_EXTRACT are shown as "available later" until Step 14 | Adopted |
 | Scanner outage | If the scanner is unreachable the job fails and the upload stays in quarantine (PROCESSING); automatic retry is to be added with the real scanner | Open |
 
+## Candidate guides (developer OK'd 16 Nov 2026)
+| Topic | Decision | Status |
+|---|---|---|
+| Scoring formula | Opportunity Score of the guides replaces the CLAUDE.md weights (CLAUDE.md updated); thresholds 80 / 60 kept | Adopted |
+| Duplicate type | One type NEAR_DUPLICATE with strength STRONG (≥ 0.90) or PROBABLE (0.80–0.899) | Adopted |
+| CAND-1042 0.87 | AI confidence of the accepted explanation | Adopted |
+| Aggregate evidence | Two new evidence domains with templates in Step 6: ORDER_BILLING_ASSURANCE (fallout, manual touch, incidents, billing dependencies) and CUSTOMER_REVENUE_AGGREGATES (active subscriptions, protected-price contracts, MRR); aggregates only | Adopted |
+| Home "Blocked" KPI | Counts active blocker records (consequence BLOCKED), as on Run Overview | Adopted |
+| Low Adoption | Saved view exists but stays empty until a detector formula is specified | Adopted |
+
+## Step 5: Mapping Rules (developer OK'd 16 Nov 2026)
+| Topic | Decision | Status |
+|---|---|---|
+| Who maps | `evidence.map` (Data Steward): create, edit, validate, submit, apply | Adopted |
+| Approval | New `mapping.approve` for Data Steward and Agent Admin; the submitter can never approve their own version (separation of duties); Return and Reject need a comment | Adopted |
+| Publish | `mapping.publish` for Agent Admin; publishing supersedes the previous published version of the same mapping | Adopted |
+| Warnings | A version with warnings can be submitted only with an explicit acknowledgement; blocking errors prevent submission | Adopted |
+| Reuse | Suggestions reuse the latest published mapping of the tenant with the same domain and header fingerprint | Adopted |
+| Return / Reject | Return sends the version back to DRAFT (editable again, content hash cleared); Reject retires the version (clone to start again) | Adopted |
+| Rows with errors at apply time | Rejected individually and listed (row + reasons); other rows are staged. Conflicting values for the same entity key inside one file reject that record | Adopted |
+| Apply compatibility | A published mapping can be applied to any confirmed upload of the same source whose schema contains every column the rules use | Adopted |
+| Staged data | Staged records, relationships and field lineage are append-only (database triggers); a new apply creates a new execution | Adopted |
+
 ## Proposed defaults (AI Studio contract not decided yet; confirm with the colleague)
 | Topic | Default | Status |
 |---|---|---|
@@ -106,8 +129,8 @@
   Treat as: the canonical Telco graph (product → CFS/RFS → resource → provisioning) in our DB.
 - Candidate detection algorithm is not specified beyond similarity threshold 0.88. Proposal: deterministic
   weighted feature similarity over canonical attributes; AI only explains.
-- CAND-1042 shows score 92 on some screens and 87/100 on the evidence-aware screen. Proposal: 92 = opportunity
-  score, 87 = commercial rationalisation dimension score; AI confidence 0.87 is separate.
+- CAND-1042 shows score 92 and 0.87. Decided (candidate guides, 16 Nov 2026): 92 = Opportunity Score,
+  0.87 = AI confidence of the accepted explanation (never part of any score). Superseded earlier proposal.
 - Wizard step 2 is labelled both "Sources" and "Evidence Hub". Use "Evidence Hub".
 - AI route screen shows "Now Assist" as primary route. Treat routes as configurable entries in the model registry.
 - Persona/permission matrix not specified. Proposal in BUILD_PLAN step 1.

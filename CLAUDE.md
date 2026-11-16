@@ -73,9 +73,12 @@ manifest.json  agent id, name, industry, version, permissions, nav, required con
 12. Excel uploads: .xlsx only; reject macros (.xlsm), password-protected or malformed files; limit size and
     sheet count; quarantine until checked. No subscriber-level data; only metadata and aggregates.
 
-Scoring profile "Telco Portfolio v2.1" weights: duplication 20, overlap 15, low adoption 15, legacy dependency 15,
-operational burden 15, strategic misalignment 10, economic upside 10. Recommend ≥ 80, review ≥ 60,
-near-duplicate similarity 0.88. Score ≠ model confidence ≠ approval.
+Opportunity Score (scoring profile, e.g. TELCO-SCORING@2.1) = round(100 × (.35 detector signal + .20 commercial
+value + .20 technical feasibility + .15 operational benefit + .10 strategic alignment)). Recommend ≥ 80,
+review ≥ 60. Duplicate similarity: strong ≥ 0.90, probable 0.80–0.899 (type NEAR_DUPLICATE). Similarity ≠ Score ≠
+Priority ≠ AI confidence ≠ approval (docs/SPEC_NOTES.md, candidate guides). Changed 16 Nov 2026 with the
+developer's OK (previously: duplication 20, overlap 15, low adoption 15, legacy 15, operational burden 15,
+strategic misalignment 10, economic upside 10; near-duplicate 0.88).
 
 ## How to work
 - Build one step of `docs/BUILD_PLAN.md` at a time. At the start of a step, state the plan briefly; at the end,

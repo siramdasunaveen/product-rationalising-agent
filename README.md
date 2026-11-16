@@ -149,6 +149,21 @@ template, fill it in and upload it. Each .xlsx file goes through these stages:
 Uploads stay "Scanning and reading…" until the worker (Terminal 2) is running. The malware scanner is a
 local stub that only detects the EICAR test file; a real scanner plugs in behind the `MalwareScanner` port.
 
+## Mapping Rules
+
+From the Evidence Hub, open a confirmed upload and click **Map columns**. The system suggests rules. The
+suggestions come from an earlier approved mapping with the same headers, the governed template, field names
+or aliases; AI suggestions are optional and use only headers plus 5 sample rows. Every suggestion shows
+where it came from. You can edit the rules, then:
+1. **Validate**: runs in the worker against the confirmed file.
+2. **Submit**: freezes the content hash.
+3. **Approve**: another Data Steward or the Agent Admin approves; you can never approve your own submission.
+4. **Publish**: the Agent Admin publishes.
+5. **Apply**: stages canonical records with field lineage. Applying the same file with the same version
+   again returns the same result.
+
+`python -m app.cli seed-artifacts` also upgrades seed templates it published earlier, as a new minor version.
+
 ## AI
 
 `PRA_AI_PROVIDER=none` (default) runs in no-LLM mode: every AI task uses its deterministic fallback.
