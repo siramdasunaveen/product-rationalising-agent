@@ -228,8 +228,11 @@ def columns_of(schema: SourceSchemaVersion) -> dict[str, str]:
 
 
 def _samples_for(session: Session, schema: SourceSchemaVersion) -> list[dict[str, Any]]:
-    """Columns with up to 5 sample values, from the upload that first produced this schema."""
-    upload = session.get(EvidenceUpload, schema.first_upload_id)
+    """Columns with up to 5 sample values, from the same file validation uses (the newest confirmed upload with
+    this structure), so what the grid shows matches what is validated."""
+    upload = session.scalar(select(EvidenceUpload).where(
+        EvidenceUpload.schema_version_id == schema.id, EvidenceUpload.status == UploadStatus.READY.value)
+        .order_by(EvidenceUpload.confirmed_at.desc()).limit(1)) or session.get(EvidenceUpload, schema.first_upload_id)
     sheet = next((s for s in (upload.discovery or {}).get("sheets", []) if s["name"] == schema.sheet_name), None) \
         if upload else None
     by_header: dict[str, list] = {}

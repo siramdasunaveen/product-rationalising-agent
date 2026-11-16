@@ -142,13 +142,14 @@ export function CreateRunScopeScreen({
       </div>
       <div className="pra-progress" aria-hidden="true"><span className="pra-progress__fill" style={{ width: "20%" }} /></div>
 
-      <WizardSteps current={1} available={[1]} />
+      {/* Step 2 behaves like the Continue button: saves edits (if allowed) and opens the Evidence Hub. */}
+      <WizardSteps current={1} available={[1, 2]} onSelect={(step) => { if (step === 2) void submit(); }} />
 
       {readOnly && (
         <div className="pra-notice" role="status">
           {has("run.create")
             ? "Scope is locked because analysis has started."
-            : "You can view this scope but not change it."}
+            : "You can view this scope but not change it. Use “2 Evidence Hub” above (or Continue below) to work on evidence."}
         </div>
       )}
       {banner && <div className="pra-alert" role="alert">{banner}</div>}
