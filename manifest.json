@@ -30,18 +30,21 @@
     { "key": "config.scoring", "description": "Manage scoring profiles" },
     { "key": "config.policy", "description": "Manage policy profiles" },
     { "key": "config.ai", "description": "Manage the AI runtime and model routing" },
-    { "key": "connector.manage", "description": "Manage source connectors" }
+    { "key": "connector.manage", "description": "Manage source connectors" },
+    { "key": "registry.read", "description": "View registry artifacts (canonical schema, lookups, transforms, crosswalks)" },
+    { "key": "registry.manage", "description": "Create, edit and clone draft registry artifacts" },
+    { "key": "registry.publish", "description": "Publish, deprecate and retire registry artifacts" }
   ],
   "suggestedRoles": {
-    "portfolio_manager": ["read", "run.create", "run.start", "candidate.view", "decision.submit"],
-    "product_owner": ["read", "candidate.view", "decision.submit"],
-    "data_steward": ["read", "evidence.upload", "evidence.map", "snapshot.approve", "conflict.resolve"],
-    "evidence_owner": ["read", "request.fulfil"],
-    "commercial_approver": ["read", "approval.act"],
-    "product_approver": ["read", "approval.act"],
-    "architecture_approver": ["read", "approval.act"],
-    "enterprise_architect": ["read", "candidate.view", "approval.act"],
-    "agent_admin": ["read", "config.scoring", "config.policy", "config.ai", "connector.manage"],
+    "portfolio_manager": ["read", "run.create", "run.start", "candidate.view", "decision.submit", "registry.read"],
+    "product_owner": ["read", "candidate.view", "decision.submit", "registry.read"],
+    "data_steward": ["read", "evidence.upload", "evidence.map", "snapshot.approve", "conflict.resolve", "registry.read", "registry.manage"],
+    "evidence_owner": ["read", "request.fulfil", "registry.read"],
+    "commercial_approver": ["read", "approval.act", "registry.read"],
+    "product_approver": ["read", "approval.act", "registry.read"],
+    "architecture_approver": ["read", "approval.act", "registry.read"],
+    "enterprise_architect": ["read", "candidate.view", "approval.act", "registry.read"],
+    "agent_admin": ["read", "config.scoring", "config.policy", "config.ai", "connector.manage", "registry.read", "registry.manage", "registry.publish"],
     "viewer": ["read"]
   },
   "nav": [

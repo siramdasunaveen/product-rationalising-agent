@@ -14,8 +14,18 @@ MANIFEST = Path(__file__).resolve().parents[2] / "manifest.json"
 
 def test_portfolio_manager_permissions():
     assert permissions_for_roles(["portfolio_manager"]) == {
-        P.READ, P.RUN_CREATE, P.RUN_START, P.CANDIDATE_VIEW, P.DECISION_SUBMIT,
+        P.READ, P.RUN_CREATE, P.RUN_START, P.CANDIDATE_VIEW, P.DECISION_SUBMIT, P.REGISTRY_READ,
     }
+
+
+def test_registry_permissions():
+    everyone_but_viewer = [k for k in PERSONAS if k != "viewer"]
+    for persona in everyone_but_viewer:
+        assert P.REGISTRY_READ in permissions_for_roles([persona]), persona
+    managers = {k for k in PERSONAS if P.REGISTRY_MANAGE in permissions_for_roles([k])}
+    publishers = {k for k in PERSONAS if P.REGISTRY_PUBLISH in permissions_for_roles([k])}
+    assert managers == {"data_steward", "agent_admin"}
+    assert publishers == {"agent_admin"}
 
 
 def test_data_steward_cannot_submit_decisions_or_approve():

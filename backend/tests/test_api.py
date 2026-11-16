@@ -43,7 +43,7 @@ def test_me_returns_permissions_for_persona(client, login, tenant):
     assert body["tenant_id"] == tenant
     assert body["roles"] == ["portfolio_manager"]
     assert body["permissions"] == sorted(
-        ["read", "run.create", "run.start", "candidate.view", "decision.submit"])
+        ["read", "run.create", "run.start", "candidate.view", "decision.submit", "registry.read"])
     assert body["platform_mode"] == "standalone"
     assert body["agent"]["name"] == "Product Rationalisation Agent"
 

@@ -24,6 +24,9 @@ class Permission(StrEnum):
     CONFIG_POLICY = "config.policy"
     CONFIG_AI = "config.ai"
     CONNECTOR_MANAGE = "connector.manage"
+    REGISTRY_READ = "registry.read"
+    REGISTRY_MANAGE = "registry.manage"
+    REGISTRY_PUBLISH = "registry.publish"
 
 
 PERMISSION_DESCRIPTIONS: dict[Permission, str] = {
@@ -42,6 +45,9 @@ PERMISSION_DESCRIPTIONS: dict[Permission, str] = {
     Permission.CONFIG_POLICY: "Manage policy profiles",
     Permission.CONFIG_AI: "Manage the AI runtime and model routing",
     Permission.CONNECTOR_MANAGE: "Manage source connectors",
+    Permission.REGISTRY_READ: "View registry artifacts (canonical schema, lookups, transforms, crosswalks)",
+    Permission.REGISTRY_MANAGE: "Create, edit and clone draft registry artifacts",
+    Permission.REGISTRY_PUBLISH: "Publish, deprecate and retire registry artifacts",
 }
 
 # Approval scopes: which approval steps an approver may act on.
@@ -49,35 +55,39 @@ APPROVAL_SCOPES = ("commercial", "product", "architecture")
 
 P = Permission
 
+RR = P.REGISTRY_READ  # every persona except Viewer may read the registries
+
 # persona key -> (display name, permissions, approval scopes)
 PERSONAS: dict[str, tuple[str, frozenset[Permission], tuple[str, ...]]] = {
     "portfolio_manager": (
         "Portfolio Manager",
-        frozenset({P.RUN_CREATE, P.RUN_START, P.CANDIDATE_VIEW, P.DECISION_SUBMIT}),
+        frozenset({P.RUN_CREATE, P.RUN_START, P.CANDIDATE_VIEW, P.DECISION_SUBMIT, RR}),
         (),
     ),
-    "product_owner": ("Product Owner", frozenset({P.CANDIDATE_VIEW, P.DECISION_SUBMIT}), ()),
+    "product_owner": ("Product Owner", frozenset({P.CANDIDATE_VIEW, P.DECISION_SUBMIT, RR}), ()),
     "data_steward": (
         "Data Steward",
-        frozenset({P.EVIDENCE_UPLOAD, P.EVIDENCE_MAP, P.SNAPSHOT_APPROVE, P.CONFLICT_RESOLVE}),
+        frozenset({P.EVIDENCE_UPLOAD, P.EVIDENCE_MAP, P.SNAPSHOT_APPROVE, P.CONFLICT_RESOLVE, RR,
+                   P.REGISTRY_MANAGE}),
         (),
     ),
-    "evidence_owner": ("Evidence Owner", frozenset({P.REQUEST_FULFIL}), ()),
-    "commercial_approver": ("Commercial Approver", frozenset({P.APPROVAL_ACT}), ("commercial",)),
-    "product_approver": ("Product Approver", frozenset({P.APPROVAL_ACT}), ("product",)),
+    "evidence_owner": ("Evidence Owner", frozenset({P.REQUEST_FULFIL, RR}), ()),
+    "commercial_approver": ("Commercial Approver", frozenset({P.APPROVAL_ACT, RR}), ("commercial",)),
+    "product_approver": ("Product Approver", frozenset({P.APPROVAL_ACT, RR}), ("product",)),
     "architecture_approver": (
         "Architecture Approver",
-        frozenset({P.APPROVAL_ACT}),
+        frozenset({P.APPROVAL_ACT, RR}),
         ("architecture",),
     ),
     "enterprise_architect": (
         "Enterprise Architect",
-        frozenset({P.CANDIDATE_VIEW, P.APPROVAL_ACT}),
+        frozenset({P.CANDIDATE_VIEW, P.APPROVAL_ACT, RR}),
         ("architecture",),
     ),
     "agent_admin": (
         "Agent Admin",
-        frozenset({P.CONFIG_SCORING, P.CONFIG_POLICY, P.CONFIG_AI, P.CONNECTOR_MANAGE}),
+        frozenset({P.CONFIG_SCORING, P.CONFIG_POLICY, P.CONFIG_AI, P.CONNECTOR_MANAGE, RR,
+                   P.REGISTRY_MANAGE, P.REGISTRY_PUBLISH}),
         (),
     ),
     "viewer": ("Viewer", frozenset(), ()),

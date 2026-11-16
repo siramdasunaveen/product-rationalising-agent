@@ -139,3 +139,83 @@ class Run(IdMixin, TenantMixin, CreatedAtMixin, Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False,
                                                  server_default=func.now())
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+
+# ---------------------------------------------------------------------------
+# Versioned artifact registry (canonical schema, lookup, transform, crosswalk; later mappings,
+# scoring, policy, prompts, models). Immutability is enforced by triggers (migration 0004).
+# ---------------------------------------------------------------------------
+
+class Artifact(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """A governed configuration item. ``key`` is unique per tenant across kinds (``KEY@1.0`` refs)."""
+
+    __tablename__ = "artifact"
+    __table_args__ = (UniqueConstraint("tenant_id", "key", name="uq_artifact_tenant_key"),)
+
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    key: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[str] = mapped_column(String(128), nullable=False)
+
+
+class ArtifactVersion(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """One version of an artifact. Only a DRAFT may change; see ``app.domain.artifacts``."""
+
+    __tablename__ = "artifact_version"
+    __table_args__ = (
+        UniqueConstraint("artifact_id", "version_major", "version_minor", name="uq_artifact_version_number"),
+        # At most one PUBLISHED and one DRAFT version per artifact.
+        Index("uq_artifact_version_published", "artifact_id", unique=True,
+              postgresql_where=text("status = 'PUBLISHED'")),
+        Index("uq_artifact_version_draft", "artifact_id", unique=True,
+              postgresql_where=text("status = 'DRAFT'")),
+    )
+
+    artifact_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.artifact.id"), nullable=False,
+                                                   index=True)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    version_major: Mapped[int] = mapped_column(Integer, nullable=False)
+    version_minor: Mapped[int] = mapped_column(Integer, nullable=False)
+    parent_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(f"{SCHEMA}.artifact_version.id"), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    content: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    digest: Mapped[str] = mapped_column(String(71), nullable=False)
+    valid_from: Mapped[date | None] = mapped_column(Date, nullable=True)
+    valid_to: Mapped[date | None] = mapped_column(Date, nullable=True)
+    change_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False,
+                                                 server_default=func.now())
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    published_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status_changed_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    status_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Optimistic locking for drafts and status changes (not the artifact's semantic version).
+    lock_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+
+# ---------------------------------------------------------------------------
+# Transactional outbox for domain events (written in the same transaction as the change;
+# relayed by a polling loop in the worker).
+# ---------------------------------------------------------------------------
+
+class OutboxEvent(TenantMixin, Base):
+    __tablename__ = "outbox_event"
+    __table_args__ = (
+        Index("ix_outbox_event_pending", "id", postgresql_where=text("published_at IS NULL")),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    event_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, unique=True, default=uuid.uuid4)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    aggregate_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    aggregate_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False,
+                                                  server_default=func.now())
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)

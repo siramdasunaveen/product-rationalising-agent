@@ -58,6 +58,20 @@
 | Define Scope period | Start/end dates (field spec), not free text as in the screenshot; "Last 12 months" quick option | Proposed |
 | Market on Define Scope | Multi-select 1–10 (field spec), not single as in the screenshot | Proposed |
 
+## Step 3: artifact registry (developer OK'd 16 Nov 2026)
+| Topic | Decision | Status |
+|---|---|---|
+| Registry permissions | `registry.read` for every persona except Viewer; `registry.manage` (drafts, clone) for Data Steward + Agent Admin; `registry.publish` (publish, deprecate, retire) for Agent Admin | Adopted |
+| Review before publish | Canonical schema, lookup, transform and crosswalk publish directly with `registry.publish`; the submit → review → approve flow comes with Mapping Rules (Step 5) | Adopted |
+| Scope of artifacts | Tenant-scoped; each tenant is seeded with its own `TELCO-CANONICAL@1.0` (`python -m app.cli seed-artifacts`) | Adopted |
+| Version numbers | `major.minor`; a new version is numbered after the highest existing one (minor or major bump), so numbers never collide; refs are `KEY@1.0` | Adopted |
+| Artifact keys | Unique per tenant across all kinds, so `KEY@1.0` is unambiguous | Adopted |
+| Digest | `sha256:` over canonical JSON (sorted keys, compact, UTF-8) of kind + key + content; version number not included, so unchanged content keeps its digest. Fractional numbers are rejected in content (write decimals as strings) because their text form is not stable | Adopted |
+| Drafts | One draft per artifact at a time; drafts may hold invalid content; validation runs on validate and on publish. A draft can be discarded (deleted); published versions never | Adopted |
+| Lookup / crosswalk targets | Point to a canonical schema by key; checked on publish against the version that is selectable at that moment. Exact pinning of schema versions happens in mappings (Step 5) | Adopted |
+| Validity window | Optional `valid_from` / `valid_to` per version, immutable once published; "selectable" = PUBLISHED and today inside the window | Adopted |
+| Domain events | Outbox table written in the same transaction; relayed by a thread in the worker to the `EventPublisher` port (log locally); at-least-once, dedupe by `event_id` | Adopted |
+
 ## Proposed defaults (AI Studio contract not decided yet; confirm with the colleague)
 | Topic | Default | Status |
 |---|---|---|

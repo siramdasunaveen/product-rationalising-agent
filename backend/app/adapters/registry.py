@@ -8,6 +8,7 @@ from redis import Redis
 from app.adapters.local.ai import AnthropicProvider, NoLLMProvider
 from app.adapters.local.audit import DbAuditLog
 from app.adapters.local.auth import LocalJwtAuth
+from app.adapters.local.events import LogEventPublisher
 from app.adapters.local.jobs import RqJobQueue
 from app.adapters.local.notify import LogNotifier
 from app.adapters.local.people import DbPeopleDirectory
@@ -18,6 +19,7 @@ from app.config import AIProviderName, PlatformMode, Settings
 from app.ports.ai import AIProvider
 from app.ports.audit import AuditLog
 from app.ports.auth import AuthProvider
+from app.ports.events import EventPublisher
 from app.ports.jobs import JobQueue
 from app.ports.notify import Notifier
 from app.ports.people import PeopleDirectory
@@ -36,6 +38,7 @@ class Platform:
     secrets: SecretCipher
     notify: Notifier
     people: PeopleDirectory
+    events: EventPublisher
     # Standalone only: issues tokens after email + password sign-in.
     token_issuer: LocalJwtAuth | None = None
     redis: Any = None
@@ -61,6 +64,7 @@ def build_platform(settings: Settings, *, redis: Any = None) -> Platform:
             secrets=studio.StudioSecretCipher(),
             notify=studio.StudioNotifier(),
             people=studio.StudioPeopleDirectory(),
+            events=studio.StudioEventPublisher(),
             redis=redis,
         )
 
@@ -75,6 +79,7 @@ def build_platform(settings: Settings, *, redis: Any = None) -> Platform:
         secrets=FernetCipher(settings.fernet_key),
         notify=LogNotifier(),
         people=DbPeopleDirectory(),
+        events=LogEventPublisher(),
         token_issuer=token_issuer,
         redis=redis,
     )

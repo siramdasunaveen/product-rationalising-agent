@@ -5,6 +5,7 @@ from typing import Any
 from app.ports.ai import AIRawResult, AIRequest
 from app.ports.audit import AuditEntry, AuditRecord, ChainCheck
 from app.ports.auth import Principal
+from app.ports.events import DomainEvent
 from app.ports.jobs import JobStatus
 from app.ports.notify import Notification
 from app.ports.people import Person
@@ -129,4 +130,16 @@ class StudioNotifier:
     """
 
     def send(self, notification: Notification) -> None:
+        raise NotImplementedError(_TODO)
+
+
+class StudioEventPublisher:
+    """Publish domain events (e.g. ``ArtifactVersionPublished``) to the studio's event bus, if any.
+
+    Needs: a publish API or topic per tenant, at-least-once semantics, and the event envelope
+    (event_id, tenant_id, event_type, aggregate_type, aggregate_id, occurred_at, payload).
+    If the studio has no bus, keep ``LogEventPublisher``; the outbox table stays the source of truth.
+    """
+
+    def publish(self, event: DomainEvent) -> None:
         raise NotImplementedError(_TODO)

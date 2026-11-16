@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -197,3 +198,115 @@ class RunSummaryOut(BaseModel):
     opportunities: int
     awaiting_approval: int
     blocked: int
+
+
+# ---------------------------------------------------------------------------
+# Artifact registry
+# ---------------------------------------------------------------------------
+
+class ArtifactVersionSummary(BaseModel):
+    id: uuid.UUID
+    version: str = Field(description="major.minor, e.g. 1.0")
+    ref: str = Field(description="KEY@major.minor; what runs pin")
+    status: str
+    digest: str = Field(description="sha256:<hex> of the canonical JSON of kind, key and content")
+    parent_version: str | None
+    valid_from: date | None
+    valid_to: date | None
+    selectable: bool = Field(description="PUBLISHED and valid today: new runs may select it")
+    change_note: str | None
+    status_reason: str | None
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
+    published_by: str | None
+    published_at: datetime | None
+    lock_version: int = Field(description="Send back on edits and status changes (optimistic locking)")
+
+
+class ArtifactVersionOut(ArtifactVersionSummary):
+    artifact_id: uuid.UUID
+    kind: str
+    key: str
+    name: str
+    content: dict
+    digest_verified: bool = Field(description="Stored content still matches the digest")
+
+
+class ArtifactOut(BaseModel):
+    id: uuid.UUID
+    kind: str
+    key: str
+    name: str
+    description: str | None
+    created_by: str
+    created_at: datetime
+    published_version: str | None
+    versions: list[ArtifactVersionSummary]
+
+
+class ArtifactListItem(BaseModel):
+    id: uuid.UUID
+    kind: str
+    key: str
+    name: str
+    published_version: str | None
+    published_digest: str | None
+    latest_version: str
+    latest_status: str
+    updated_at: datetime
+
+
+class ArtifactListOut(BaseModel):
+    total: int
+    items: list[ArtifactListItem]
+
+
+class ArtifactCreateIn(BaseModel):
+    key: str = Field(examples=["TELCO-CANONICAL"], description="Upper case, unique in the tenant")
+    name: str
+    description: str | None = None
+    content: dict
+    valid_from: date | None = None
+    valid_to: date | None = None
+    change_note: str | None = None
+
+
+class ArtifactDraftPatch(BaseModel):
+    lock_version: int
+    content: dict | None = None
+    valid_from: date | None = None
+    valid_to: date | None = None
+    change_note: str | None = None
+
+
+class ArtifactCloneIn(BaseModel):
+    bump: Literal["minor", "major"] = "minor"
+    change_note: str | None = None
+
+
+class ArtifactLockIn(BaseModel):
+    lock_version: int
+
+
+class ArtifactStatusIn(BaseModel):
+    lock_version: int
+    reason: str = Field(description="Why (required, 3–2000 characters)")
+
+
+class ArtifactValidationOut(BaseModel):
+    valid: bool
+    digest: str
+    errors: list[FieldErrorOut]
+
+
+class ArtifactRefOut(BaseModel):
+    artifact_id: uuid.UUID
+    version_id: uuid.UUID
+    kind: str
+    key: str
+    version: str
+    ref: str
+    digest: str
+    status: str
+    selectable: bool

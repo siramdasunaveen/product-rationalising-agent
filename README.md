@@ -55,6 +55,7 @@ cd backend
 .\.venv\Scripts\alembic.exe upgrade head
 .\.venv\Scripts\python.exe -m app.cli seed-demo-users
 .\.venv\Scripts\python.exe -m app.cli seed-reference-data      # demo portfolios, markets, product families
+.\.venv\Scripts\python.exe -m app.cli seed-artifacts           # TELCO-CANONICAL@1.0 + starter lookups/transforms
 cd ..
 
 # 5. Frontend dependencies
@@ -69,7 +70,7 @@ cd ..
 # Terminal 1: API on http://localhost:8000 (OpenAPI docs at /docs)
 cd backend; .\.venv\Scripts\uvicorn.exe app.main:create_app --factory --reload --port 8000
 
-# Terminal 2: background job worker (works on Windows: no fork)
+# Terminal 2: background job worker (works on Windows: no fork); also relays domain events (outbox)
 cd backend; .\.venv\Scripts\python.exe -m app.jobs.worker
 
 # Terminal 3: UI on http://localhost:5173 (proxies /api to :8000)
@@ -126,6 +127,14 @@ docker compose down                   # stop infra (keeps data)
 docker compose down -v                # stop infra and DELETE the data
 cd backend; .\.venv\Scripts\alembic.exe revision --autogenerate -m "describe change"   # new migration
 ```
+
+## Registries (versioned artifacts)
+
+Canonical schemas, lookups, transforms and crosswalks live under `/api/rationalisation/registries/{kind}`.
+Each version goes DRAFT → PUBLISHED → DEPRECATED / SUPERSEDED / RETIRED. Only drafts can change, and
+the database enforces this with triggers. To change a published version, clone it, edit the draft and
+publish it; the old version becomes SUPERSEDED. Runs pin `KEY@major.minor` plus a SHA-256 digest of the
+content. Data Stewards and Agent Admins edit drafts; only Agent Admins publish.
 
 ## AI
 

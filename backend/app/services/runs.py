@@ -23,16 +23,11 @@ from app.domain.runs import (
 from app.ports.audit import AuditLog, AuditRecord
 from app.ports.auth import Principal
 from app.ports.people import PeopleDirectory
+from app.services.errors import ServiceError
 
 
-class RunError(Exception):
-    status_code = 400
+class RunError(ServiceError):
     code = "run_error"
-
-    def __init__(self, message: str, errors: list[FieldError] | None = None) -> None:
-        super().__init__(message)
-        self.message = message
-        self.errors = errors or []
 
 
 class RunValidationError(RunError):

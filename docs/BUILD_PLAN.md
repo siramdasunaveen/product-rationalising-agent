@@ -20,7 +20,7 @@ field specification were supplied.
 - Done when: create, list, search, reopen and edit a run with every field rule from the field spec enforced
   server-side; audit on create/update; tenant isolation and permission tests.
 
-## Step 3: Versioned artifact registry + canonical schema · TODO
+## Step 3: Versioned artifact registry + canonical schema · DONE
 - One reusable pattern for immutable, versioned, digest-identified artifacts with a status lifecycle
   (DRAFT … PUBLISHED … SUPERSEDED/RETIRED); only PUBLISHED is selectable; a change = new version.
 - Registries built on it: canonical schema (TELCO-CANONICAL@x), lookup, transform, crosswalk.

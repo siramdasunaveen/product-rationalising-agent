@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from enum import StrEnum
 
+from app.domain.common import FieldError
+
 NAME_MIN, NAME_MAX = 3, 120
 MARKETS_MIN, MARKETS_MAX = 1, 10
 FAMILIES_MIN, FAMILIES_MAX = 1, 100
@@ -69,12 +71,6 @@ OBJECTIVE_LABELS: dict[Objective, str] = {
 
 # Personas that may be the accountable owner of a run.
 OWNER_ROLES = ("portfolio_manager", "product_owner")
-
-
-@dataclass(frozen=True)
-class FieldError:
-    field: str
-    message: str
 
 
 @dataclass

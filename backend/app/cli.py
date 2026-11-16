@@ -4,6 +4,8 @@
     python -m app.cli seed-demo-users --reset-passwords   # after changing PRA_DEMO_PASSWORD
     python -m app.cli set-password --email a@b.com
     python -m app.cli seed-reference-data [--tenant demo]   # demo portfolios, markets, product families
+    python -m app.cli seed-artifacts [--tenant demo]        # TELCO-CANONICAL@1.0, lookups, transforms
+    python -m app.cli relay-outbox                          # publish pending domain events once
     python -m app.cli create-user --email a@b.com --name "A. Patel" --role portfolio_manager [--tenant demo]
     python -m app.cli set-active --email a@b.com --inactive
 """
@@ -14,10 +16,14 @@ import sys
 
 from sqlalchemy import select
 
+from app.adapters.local.audit import DbAuditLog
+from app.adapters.local.events import LogEventPublisher
 from app.config import get_settings
 from app.db.models import AppUser
 from app.db.session import make_sessionmaker
 from app.domain.permissions import PERSONAS
+from app.services.artifact_seed import seed_artifacts
+from app.services.outbox import relay_pending
 from app.services.reference import seed_reference_data
 from app.services.users import DEMO_USERS, UserError, create_user, normalise_email, set_password
 
@@ -82,6 +88,23 @@ def seed_reference_cmd(args: argparse.Namespace) -> int:
     return 0
 
 
+def seed_artifacts_cmd(args: argparse.Namespace) -> int:
+    with _session() as s:
+        result = seed_artifacts(s, DbAuditLog(), args.tenant)
+    for ref in result["created"]:
+        print(f"published {ref}")
+    for key in result["existing"]:
+        print(f"exists    {key}")
+    return 0
+
+
+def relay_outbox_cmd(args: argparse.Namespace) -> int:
+    with _session() as s:
+        result = relay_pending(s, LogEventPublisher(), batch=args.batch)
+    print(f"published {result.published}, failed {result.failed}")
+    return 0
+
+
 def create_user_cmd(args: argparse.Namespace) -> int:
     password = getpass.getpass("Password: ")
     if password != getpass.getpass("Repeat password: "):
@@ -124,6 +147,15 @@ def main(argv: list[str] | None = None) -> int:
                        help="Create demo portfolios, markets and product families for a tenant")
     p.add_argument("--tenant", default="demo")
     p.set_defaults(func=seed_reference_cmd)
+
+    p = sub.add_parser("seed-artifacts",
+                       help="Publish TELCO-CANONICAL@1.0 and the starter lookups/transforms for a tenant")
+    p.add_argument("--tenant", default="demo")
+    p.set_defaults(func=seed_artifacts_cmd)
+
+    p = sub.add_parser("relay-outbox", help="Publish pending domain events once (the worker does this continuously)")
+    p.add_argument("--batch", type=int, default=500)
+    p.set_defaults(func=relay_outbox_cmd)
 
     p = sub.add_parser("set-password", help="Change a user's password (asks for it) and clear lockout")
     p.add_argument("--email", required=True)
