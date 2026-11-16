@@ -9,6 +9,7 @@ from app.ports.events import DomainEvent
 from app.ports.jobs import JobStatus
 from app.ports.notify import Notification
 from app.ports.people import Person
+from app.ports.scanner import ScanResult
 from app.ports.storage import StorageArea, StoredObject
 
 _TODO = "AI Studio adapter not implemented yet (see docstring)"
@@ -142,4 +143,16 @@ class StudioEventPublisher:
     """
 
     def publish(self, event: DomainEvent) -> None:
+        raise NotImplementedError(_TODO)
+
+
+class StudioMalwareScanner:
+    """Scan uploaded files with the studio's (or the customer's) anti-malware service.
+
+    Needs: a scan API taking bytes (or an object-store key) returning clean / infected + signature and
+    engine version; a timeout; raise ``ScannerUnavailable`` when the service is down so the file
+    stays in quarantine. Alternative: ClamAV (clamd) as a sidecar container.
+    """
+
+    def scan(self, data: bytes, *, filename: str) -> ScanResult:
         raise NotImplementedError(_TODO)

@@ -15,6 +15,7 @@ MANIFEST = Path(__file__).resolve().parents[2] / "manifest.json"
 def test_portfolio_manager_permissions():
     assert permissions_for_roles(["portfolio_manager"]) == {
         P.READ, P.RUN_CREATE, P.RUN_START, P.CANDIDATE_VIEW, P.DECISION_SUBMIT, P.REGISTRY_READ,
+        P.EVIDENCE_UPLOAD,
     }
 
 

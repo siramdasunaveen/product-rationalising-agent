@@ -36,7 +36,7 @@
     { "key": "registry.publish", "description": "Publish, deprecate and retire registry artifacts" }
   ],
   "suggestedRoles": {
-    "portfolio_manager": ["read", "run.create", "run.start", "candidate.view", "decision.submit", "registry.read"],
+    "portfolio_manager": ["read", "run.create", "run.start", "candidate.view", "decision.submit", "evidence.upload", "registry.read"],
     "product_owner": ["read", "candidate.view", "decision.submit", "registry.read"],
     "data_steward": ["read", "evidence.upload", "evidence.map", "snapshot.approve", "conflict.resolve", "registry.read", "registry.manage"],
     "evidence_owner": ["read", "request.fulfil", "registry.read"],

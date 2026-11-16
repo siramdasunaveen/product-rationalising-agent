@@ -139,6 +139,9 @@ class Run(IdMixin, TenantMixin, CreatedAtMixin, Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False,
                                                  server_default=func.now())
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # Evidence domains confirmed for this run (screen 03). NULL = not confirmed yet: the proposal from
+    # the objectives applies (app.domain.evidence.propose_domains).
+    evidence_domains: Mapped[list[str] | None] = mapped_column(ARRAY(String(40)), nullable=True)
 
 
 # ---------------------------------------------------------------------------
@@ -219,3 +222,78 @@ class OutboxEvent(TenantMixin, Base):
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# Evidence Hub (screen 03): sources, uploads, discovered source schemas
+# ---------------------------------------------------------------------------
+
+class EvidenceSource(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """Where a run gets the evidence of one domain from. Excel uploads use one source per run + domain."""
+
+    __tablename__ = "evidence_source"
+    __table_args__ = (UniqueConstraint("run_id", "domain", "source_type", name="uq_evidence_source_run_domain_type"),)
+
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.run.id"), nullable=False, index=True)
+    domain: Mapped[str] = mapped_column(String(40), nullable=False)
+    source_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_by: Mapped[str] = mapped_column(String(128), nullable=False)
+
+
+class SourceSchemaVersion(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """Immutable column structure of a source (sheet + header row + columns). Same headers -> same version.
+
+    UPDATE/DELETE are blocked by a trigger (migration 0005).
+    """
+
+    __tablename__ = "source_schema_version"
+    __table_args__ = (
+        UniqueConstraint("source_id", "version", name="uq_source_schema_version_number"),
+        UniqueConstraint("source_id", "fingerprint", name="uq_source_schema_version_fingerprint"),
+    )
+
+    source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.evidence_source.id"), nullable=False,
+                                                 index=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    fingerprint: Mapped[str] = mapped_column(String(71), nullable=False)
+    sheet_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    header_row: Mapped[int] = mapped_column(Integer, nullable=False)
+    columns: Mapped[list] = mapped_column(JSONB, nullable=False)
+    template_ref: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    template_match: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    first_upload_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    created_by: Mapped[str] = mapped_column(String(128), nullable=False)
+
+
+class EvidenceUpload(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """One uploaded workbook. The file stays in quarantine until scanned and read; rejected files are
+    deleted (only this record and the reasons remain)."""
+
+    __tablename__ = "evidence_upload"
+    __table_args__ = (
+        # The same file twice in one source is a duplicate (unless the first one was rejected).
+        Index("uq_evidence_upload_source_sha", "source_id", "sha256", unique=True,
+              postgresql_where=text("status <> 'REJECTED'")),
+    )
+
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.run.id"), nullable=False, index=True)
+    source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.evidence_source.id"), nullable=False,
+                                                 index=True)
+    domain: Mapped[str] = mapped_column(String(40), nullable=False)
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    reasons: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)  # [{code, message}]
+    scan: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    discovery: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    job_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    uploaded_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    uploaded_by_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    schema_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(f"{SCHEMA}.source_schema_version.id"), nullable=True)
+    confirmed_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

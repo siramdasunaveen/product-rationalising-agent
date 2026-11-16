@@ -43,6 +43,7 @@ class RegistryKind(StrEnum):
     LOOKUPS = "lookups"
     TRANSFORMS = "transforms"
     CROSSWALKS = "crosswalks"
+    EVIDENCE_TEMPLATES = "evidence-templates"
 
 
 KINDS = {
@@ -50,6 +51,7 @@ KINDS = {
     RegistryKind.LOOKUPS: ArtifactKind.LOOKUP,
     RegistryKind.TRANSFORMS: ArtifactKind.TRANSFORM,
     RegistryKind.CROSSWALKS: ArtifactKind.CROSSWALK,
+    RegistryKind.EVIDENCE_TEMPLATES: ArtifactKind.EVIDENCE_TEMPLATE,
 }
 
 Reader = Annotated[Principal, Depends(require_permission(Permission.REGISTRY_READ))]

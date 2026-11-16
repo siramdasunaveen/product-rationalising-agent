@@ -27,6 +27,7 @@ class ArtifactKind(StrEnum):
     LOOKUP = "LOOKUP"
     TRANSFORM = "TRANSFORM"
     CROSSWALK = "CROSSWALK"
+    EVIDENCE_TEMPLATE = "EVIDENCE_TEMPLATE"  # governed Excel template of an evidence domain
 
 
 KIND_LABELS: dict[ArtifactKind, str] = {
@@ -34,6 +35,7 @@ KIND_LABELS: dict[ArtifactKind, str] = {
     ArtifactKind.LOOKUP: "Lookup",
     ArtifactKind.TRANSFORM: "Transform",
     ArtifactKind.CROSSWALK: "Crosswalk",
+    ArtifactKind.EVIDENCE_TEMPLATE: "Evidence template",
 }
 
 

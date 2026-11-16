@@ -15,15 +15,26 @@ def pending(session_factory, tenant):
 
 
 class Flaky:
-    def __init__(self, fail_times: int) -> None:
+    """Fails the first ``fail_times`` events of ``tenant``; other tenants' events go through."""
+
+    def __init__(self, tenant: str, fail_times: int) -> None:
+        self.tenant = tenant
         self.fail_times = fail_times
         self.published = []
 
     def publish(self, event):
-        if self.fail_times:
+        if event.tenant_id == self.tenant and self.fail_times:
             self.fail_times -= 1
             raise ConnectionError("bus down")
         self.published.append(event)
+
+
+def drain(session_factory, publisher):
+    """Relay until nothing more is published (other tests leave events behind in the shared DB)."""
+    while True:
+        with session_factory() as s:
+            if relay_pending(s, publisher, batch=1000).published == 0:
+                return
 
 
 def test_events_only_exist_if_the_transaction_commits(session_factory, tenant):
@@ -42,8 +53,7 @@ def test_relay_publishes_in_order_and_marks_done(session_factory, tenant):
             emit(s, tenant_id=tenant, event_type=f"E{i}", aggregate_type="x", aggregate_id=str(i))
         s.commit()
     publisher = LogEventPublisher()
-    with session_factory() as s:
-        relay_pending(s, publisher, batch=1000)
+    drain(session_factory, publisher)
     mine = [e for e in publisher.published if e.tenant_id == tenant]
     assert [e.event_type for e in mine] == ["E0", "E1", "E2"]
     assert len({e.event_id for e in mine}) == 3
@@ -51,16 +61,16 @@ def test_relay_publishes_in_order_and_marks_done(session_factory, tenant):
 
 
 def test_failed_publish_is_retried(session_factory, tenant):
+    drain(session_factory, LogEventPublisher())  # clear what other tests left, so one pass sees only ours
     with session_factory() as s:
         emit(s, tenant_id=tenant, event_type="E", aggregate_type="x", aggregate_id="1")
         s.commit()
-    flaky = Flaky(fail_times=1)
+    flaky = Flaky(tenant, fail_times=1)
     with session_factory() as s:
         relay_pending(s, flaky, batch=1000)
     [row] = pending(session_factory, tenant)
     assert row.attempts == 1 and "bus down" in row.last_error
-    with session_factory() as s:
-        relay_pending(s, flaky, batch=1000)
+    drain(session_factory, flaky)
     assert pending(session_factory, tenant) == []
     assert [e.tenant_id for e in flaky.published].count(tenant) == 1
 
@@ -71,8 +81,7 @@ def test_gives_up_after_max_attempts(session_factory, tenant):
         e.attempts = MAX_ATTEMPTS
         s.commit()
     publisher = LogEventPublisher()
-    with session_factory() as s:
-        relay_pending(s, publisher, batch=1000)
+    drain(session_factory, publisher)
     assert all(ev.tenant_id != tenant for ev in publisher.published)
 
 

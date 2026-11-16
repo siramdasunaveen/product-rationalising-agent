@@ -310,3 +310,103 @@ class ArtifactRefOut(BaseModel):
     digest: str
     status: str
     selectable: bool
+
+
+# ---------------------------------------------------------------------------
+# Evidence Hub
+# ---------------------------------------------------------------------------
+
+class EvidenceDomainInfo(BaseModel):
+    key: str
+    label: str
+    live_system: str
+    typical_systems: str
+    canonical_entities: list[str]
+    template_ref: str | None = Field(description="Published governed Excel template, e.g. TPL-CPQ@1.0")
+
+
+class ProblemOut(BaseModel):
+    code: str
+    message: str
+
+
+class SourceTypeOut(BaseModel):
+    type: str
+    label: str
+    available: bool
+
+
+class SourceSchemaOut(BaseModel):
+    id: uuid.UUID
+    version: int
+    fingerprint: str = Field(description="sha256 of the ordered header names")
+    sheet_name: str
+    header_row: int
+    columns: list[dict]
+    template_ref: str | None
+    template_match: dict | None
+    created_at: datetime
+
+
+class UploadSummary(BaseModel):
+    id: uuid.UUID
+    domain: str
+    filename: str
+    size_bytes: int
+    status: str = Field(description="PROCESSING | READY | REJECTED")
+    reasons: list[ProblemOut]
+    uploaded_by_name: str
+    uploaded_at: datetime
+    processed_at: datetime | None
+    default_sheet: str | None
+    schema_version: int | None
+    confirmed_at: datetime | None
+
+
+class UploadOut(UploadSummary):
+    sha256: str
+    scan: dict | None
+    discovery: dict | None = Field(description="Sheets, header rows, columns, samples, warnings, template match")
+    schema_: SourceSchemaOut | None = Field(default=None, alias="schema")
+    duplicate: bool = False
+
+    model_config = {"populate_by_name": True}
+
+
+class EvidenceDomainOut(BaseModel):
+    key: str
+    label: str
+    live_system: str
+    typical_systems: str
+    selected: bool
+    proposed: bool
+    proposal_reasons: list[str]
+    status: str = Field(description="NO_SOURCE | CHECKING | NEEDS_CONFIRMATION | READY | REJECTED")
+    template_ref: str | None
+    source_types: list[SourceTypeOut]
+    uploads: list[UploadSummary]
+
+
+class EvidenceOverviewOut(BaseModel):
+    run_id: uuid.UUID
+    run_code: str
+    run_name: str
+    version: int = Field(description="Run version; send it back when changing the domain selection")
+    editable: bool
+    selection_confirmed: bool
+    domains: list[EvidenceDomainOut]
+
+
+class DomainSelectionIn(BaseModel):
+    domains: list[str]
+    version: int
+
+
+class SheetChoiceIn(BaseModel):
+    sheet: str = Field(max_length=64)
+    header_row: int | None = Field(default=None, ge=1, le=50)
+
+
+class SheetConfirmIn(BaseModel):
+    sheet: str = Field(max_length=64)
+    header_row: int = Field(ge=1, le=50)

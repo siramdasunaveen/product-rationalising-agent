@@ -72,6 +72,22 @@
 | Validity window | Optional `valid_from` / `valid_to` per version, immutable once published; "selectable" = PUBLISHED and today inside the window | Adopted |
 | Domain events | Outbox table written in the same transaction; relayed by a thread in the worker to the `EventPublisher` port (log locally); at-least-once, dedupe by `event_id` | Adopted |
 
+## Step 4: Evidence Hub (developer OK'd 16 Nov 2026)
+| Topic | Decision | Status |
+|---|---|---|
+| Number of evidence domains | 7 (as on the screen, in the user guide and in CLAUDE.md). ORDER_BILLING_ASSURANCE from the field spec is added once its template columns are specified | Adopted |
+| Who uploads | `evidence.upload` for Data Steward **and Portfolio Manager**; choosing domains needs `run.create` | Adopted |
+| Proposed domains | Product Catalog + Lifecycle always; objectives add: duplicates → CPQ, Price Book, Technical; BSS sunset → Technical, Provisioning, Inventory; fallout → Provisioning, Inventory; margin → Price Book, CPQ; migration → Technical, Provisioning, Inventory; standardisation → CPQ, Technical. User confirms; stored as `run.evidence_domains` (NULL = proposal applies) | Adopted |
+| Personal data | Upload is **rejected** if a header looks like subscriber/personal data (MSISDN, IMSI, e-mail, phone, customer name/id, address, postcode, date of birth, account number, …) or values look like e-mail addresses. Aggregates such as "Subscriber Count" are allowed | Adopted |
+| Limits | 10 MB, 20 sheets, 100,000 data rows per sheet, 500 columns, 200 MB unpacked, 2,000 parts (all `PRA_UPLOAD_*` settings) | Adopted |
+| Rejected files | Deleted from storage; the upload record and reasons are kept (audit). Quick-check failures are not stored at all; they are audited and answered with 422 | Adopted |
+| Duplicates | The same file (SHA-256) uploaded again to the same run + domain returns the existing upload (`duplicate: true`), unless the earlier one was rejected | Adopted |
+| Templates | Governed templates are registry artifacts (kind EVIDENCE_TEMPLATE, `TPL-…@1.0`): columns → canonical fields, lookups for accepted values; downloadable as .xlsx with a Data and an Instructions sheet | Adopted |
+| Source schema identity | Fingerprint = SHA-256 of the ordered, whitespace-normalised header names. Column types are stored for information but are not part of the identity | Adopted |
+| Header row | Detected automatically in the first 20 rows; the user may choose any row in the first 50 | Adopted |
+| Live connectors | Source types API_CONNECTOR, SECURE_QUERY and SCHEDULED_EXTRACT are shown as "available later" until Step 14 | Adopted |
+| Scanner outage | If the scanner is unreachable the job fails and the upload stays in quarantine (PROCESSING); automatic retry is to be added with the real scanner | Open |
+
 ## Proposed defaults (AI Studio contract not decided yet; confirm with the colleague)
 | Topic | Default | Status |
 |---|---|---|

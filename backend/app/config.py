@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     storage_dir: Path = Path("./var/storage")
     upload_max_bytes: int = 10 * 1024 * 1024
     upload_max_sheets: int = 20
+    upload_max_rows: int = 100_000  # data rows per sheet
+    upload_max_columns: int = 500
+    # Zip-bomb guard: total unpacked size and number of parts inside an .xlsx.
+    upload_max_unpacked_bytes: int = 200 * 1024 * 1024
+    upload_max_parts: int = 2000
 
     cors_origins: str = "http://localhost:5173"  # comma-separated
 

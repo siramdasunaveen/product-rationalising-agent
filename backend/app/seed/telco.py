@@ -215,3 +215,122 @@ TRANSFORMS: list[tuple[str, str, dict]] = [
         "input": "string", "output": "boolean",
         "steps": [{"op": "to_bool", "true": ["Y", "Yes", "True", "1"], "false": ["N", "No", "False", "0"]}]}),
 ]
+
+
+# ---------------------------------------------------------------------------
+# Governed Excel templates per evidence domain (user guide: "Recommended Excel template columns").
+# ---------------------------------------------------------------------------
+
+def _col(header: str, entity: str | None = None, field: str | None = None, *, required: bool = False,
+         description: str = "", example: str = "", **extra) -> dict:
+    col: dict = {"header": header}
+    if required:
+        col["required"] = True
+    if entity and field:
+        col["target"] = {"entity": entity, "field": field}
+    if description:
+        col["description"] = description
+    if example:
+        col["example"] = example
+    col.update(extra)
+    return col
+
+
+def _template(domain: str, description: str, columns: list[dict]) -> dict:
+    return {"description": description, "domain": domain, "canonicalSchema": CANONICAL_KEY,
+            "sheetName": "Data", "columns": columns}
+
+
+TEMPLATES: list[tuple[str, str, dict]] = [
+    ("TPL-CRM-CATALOG", "CRM Product / Offer Catalog template", _template(
+        "CRM_CATALOG", "One row per commercial product (and offer, if any).", [
+            _col("Product ID", "Product", "productId", required=True,
+                 description="Enterprise Product ID; keep it exactly as in the CRM", example="PRD-1001"),
+            _col("Product Name", "Product", "productName", required=True, example="Fibre 500 Home"),
+            _col("Product Family", "Product", "productFamily", required=True, example="Broadband"),
+            _col("Status", "Product", "status", required=True, lookup="PRODUCT-STATUS", example="Active"),
+            _col("Offer ID", "Offer", "offerId", example="OFR-2001"),
+            _col("Parent Product", "Product", "parentProductId", description="Product ID of the parent product"),
+            _col("Market", "Product", "market", example="UK Consumer"),
+            _col("Segment", "Product", "segment", example="Residential"),
+            _col("Channel", "Product", "channel", example="Online"),
+            _col("Description", "Product", "description"),
+        ])),
+    ("TPL-CPQ", "CPQ Product Configuration template", _template(
+        "CPQ", "One row per configuration rule of a product.", [
+            _col("Product ID", "CpqRule", "productId", required=True, example="PRD-1001"),
+            _col("Attribute/Option ID", "CpqRule", "attributeOptionId", required=True, example="OPT-SPEED-500"),
+            _col("Rule Type", "CpqRule", "ruleType", required=True, lookup="CPQ-RULE-TYPE", example="Dependency"),
+            _col("Effective From", "CpqRule", "effectiveFrom", required=True, example="2026-01-01"),
+            _col("Required/Optional", "CpqRule", "requirement", example="Required"),
+            _col("Dependency", "CpqRule", "dependency"),
+            _col("Eligibility", "CpqRule", "eligibility"),
+            _col("Cardinality", "CpqRule", "cardinality", example="0..1"),
+            _col("Effective To", "CpqRule", "effectiveTo"),
+        ])),
+    ("TPL-PRICE-BOOK", "Pricing / Price Book template", _template(
+        "PRICE_BOOK", "List prices only; negotiated customer prices are not accepted.", [
+            _col("Price Book ID", "PriceBookEntry", "priceBookId", required=True, example="PB-UK-2026"),
+            _col("Product ID", "PriceBookEntry", "productId", required=True, example="PRD-1001"),
+            _col("Currency", "PriceBookEntry", "currency", required=True, example="GBP"),
+            _col("List Price", "PriceBookEntry", "listPrice", required=True, example="29.99"),
+            _col("Effective From", "PriceBookEntry", "effectiveFrom", required=True, example="2026-01-01"),
+            _col("Segment", "PriceBookEntry", "segment"),
+            _col("Channel", "PriceBookEntry", "channel"),
+            _col("Market", "PriceBookEntry", "market"),
+            _col("Effective To", "PriceBookEntry", "effectiveTo"),
+            _col("Tax Class", "PriceBookEntry", "taxClass"),
+        ])),
+    ("TPL-LIFECYCLE", "Product Lifecycle template", _template(
+        "LIFECYCLE", "Lifecycle status per product, maintained by Product Management.", [
+            _col("Product ID", "ProductLifecycle", "productId", required=True, example="PRD-1001"),
+            _col("Lifecycle Status", "ProductLifecycle", "lifecycleStatus", required=True,
+                 lookup="LIFECYCLE-STATUS", example="End of Sale"),
+            _col("Effective From", "ProductLifecycle", "effectiveFrom", required=True, example="2026-01-01"),
+            _col("End-of-Sale Date", "ProductLifecycle", "endOfSaleDate"),
+            _col("Sunset Date", "ProductLifecycle", "sunsetDate"),
+            _col("Replacement Product ID", "ProductLifecycle", "replacementProductId"),
+            _col("Owner", "ProductLifecycle", "owner", description="Accountable product manager (internal)"),
+            _col("Rationale", "ProductLifecycle", "rationale"),
+        ])),
+    ("TPL-TECHNICAL-CATALOG", "Technical Product / Service Catalog template", _template(
+        "TECHNICAL_CATALOG", "Commercial product to CFS/RFS decomposition.", [
+            _col("Product ID", "Product", "productId", required=True, example="PRD-1001"),
+            _col("Service Spec ID", "ServiceSpec", "serviceSpecId", required=True, example="CFS-FTTP-INTERNET"),
+            _col("Service Type", "ServiceSpec", "serviceType", required=True, example="Internet access"),
+            _col("Relationship Type", required=True, relationship="DECOMPOSES_TO",
+                 description="DECOMPOSES_TO, REALIZED_BY or USES_RESOURCE", example="DECOMPOSES_TO"),
+            _col("CFS/RFS", "ServiceSpec", "specCategory", lookup="SERVICE-SPEC-CATEGORY", example="CFS"),
+            _col("Parent Service", "ServiceSpec", "parentServiceSpecId"),
+            _col("Resource Spec ID", "ResourceSpec", "resourceSpecId"),
+            _col("Effective From", "ServiceSpec", "effectiveFrom"),
+            _col("Effective To", "ServiceSpec", "effectiveTo"),
+        ])),
+    ("TPL-PROVISIONING", "Provisioning & Activation template", _template(
+        "PROVISIONING", "Provisioning workflows and rules; give a Product ID or a Service Spec ID on each row.", [
+            _col("Product ID", "Product", "productId", oneOfGroup="subject", example="PRD-1001"),
+            _col("Service Spec ID", "ServiceSpec", "serviceSpecId", oneOfGroup="subject"),
+            _col("Workflow ID", "ProvisioningWorkflow", "workflowId", required=True, example="WF-FTTP-ACT"),
+            _col("Rule/Action", "ProvisioningWorkflow", "ruleAction", required=True, example="Activate ONT"),
+            _col("Target System", "ProvisioningWorkflow", "targetSystem", required=True, example="Orchestrator"),
+            _col("Version", "ProvisioningWorkflow", "workflowVersion"),
+            _col("Legacy Flag", "ProvisioningWorkflow", "legacyFlag", example="No"),
+            _col("Target Compatibility", "ProvisioningWorkflow", "targetCompatibility", example="COMPATIBLE"),
+            _col("Exception Code", "ProvisioningWorkflow", "exceptionCode"),
+            _col("Effective From", "ProvisioningWorkflow", "effectiveFrom"),
+            _col("Effective To", "ProvisioningWorkflow", "effectiveTo"),
+        ])),
+    ("TPL-INVENTORY", "Service / Resource Inventory template", _template(
+        "INVENTORY", "Aggregated counts only; no service instances or subscriber identifiers.", [
+            _col("Service Instance Aggregate Key", "InventoryAggregate", "aggregateKey", required=True,
+                 example="AGG-FTTP-500-UK"),
+            _col("Service Spec ID", "InventoryAggregate", "serviceSpecId", required=True),
+            _col("Resource Spec ID", "InventoryAggregate", "resourceSpecId", required=True),
+            _col("Status", "InventoryAggregate", "status", required=True, example="ACTIVE"),
+            _col("Active Count", "InventoryAggregate", "activeCount", example="12450"),
+            _col("Variant Count", "InventoryAggregate", "variantCount"),
+            _col("Legacy Dependency", "InventoryAggregate", "legacyDependency", example="No"),
+            _col("Region", "InventoryAggregate", "region"),
+            _col("Last Updated", "InventoryAggregate", "lastUpdated"),
+        ])),
+]

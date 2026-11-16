@@ -61,7 +61,7 @@ RR = P.REGISTRY_READ  # every persona except Viewer may read the registries
 PERSONAS: dict[str, tuple[str, frozenset[Permission], tuple[str, ...]]] = {
     "portfolio_manager": (
         "Portfolio Manager",
-        frozenset({P.RUN_CREATE, P.RUN_START, P.CANDIDATE_VIEW, P.DECISION_SUBMIT, RR}),
+        frozenset({P.RUN_CREATE, P.RUN_START, P.CANDIDATE_VIEW, P.DECISION_SUBMIT, RR, P.EVIDENCE_UPLOAD}),
         (),
     ),
     "product_owner": ("Product Owner", frozenset({P.CANDIDATE_VIEW, P.DECISION_SUBMIT, RR}), ()),

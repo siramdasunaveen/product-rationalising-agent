@@ -10,7 +10,7 @@ from app.db.models import Artifact
 from app.domain.artifacts import FIRST_VERSION, ArtifactKind
 from app.ports.audit import AuditLog
 from app.ports.auth import Principal
-from app.seed.telco import CANONICAL_KEY, LOOKUPS, TELCO_CANONICAL, TRANSFORMS
+from app.seed.telco import CANONICAL_KEY, LOOKUPS, TELCO_CANONICAL, TEMPLATES, TRANSFORMS
 from app.services.artifacts import create_artifact, publish
 
 SEED_ACTOR = "system:seed"
@@ -25,6 +25,7 @@ def seed_items() -> list[tuple[ArtifactKind, str, str, dict]]:
     items = [(ArtifactKind.CANONICAL_SCHEMA, CANONICAL_KEY, "Telco canonical model", TELCO_CANONICAL)]
     items += [(ArtifactKind.LOOKUP, key, name, content) for key, name, content in LOOKUPS]
     items += [(ArtifactKind.TRANSFORM, key, name, content) for key, name, content in TRANSFORMS]
+    items += [(ArtifactKind.EVIDENCE_TEMPLATE, key, name, content) for key, name, content in TEMPLATES]
     return items
 
 

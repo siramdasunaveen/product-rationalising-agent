@@ -183,3 +183,107 @@ billing/order deps), RETIRE (installed base, footprint, contracts, revenue, bill
 Strategy (CUSTOMER_MODEL_REGISTRY, PLATFORM_MANAGED, BYO_ENDPOINT, NO_LLM); registry; task routes (MATCHING,
 REASONING, TECHNICAL_EXPLANATION, RATIONALE, TRANSITION_NARRATIVE); governance checks (approved, region, data
 policy, structured output, fallback). Model/provider version and routing pinned per run.
+
+---
+# Candidate guides (5 developer guides, supplied 16 Nov 2026, second batch)
+Sources: Run Overview Metrics (expanded detectors/normalization), Run Overview (cross-screen), Candidate
+Explorer (priority views), Candidate Explorer (cross-screen), Candidate Review (with E2E example CAND-1042).
+Core rule: one approved snapshot + pinned detector/scoring/policy versions; **no LLM computes any metric,
+detector score, grouping, priority, status, blocker or recommendation enum.**
+
+## Run Overview metrics (screen 06)
+- sourceProducts = COUNT(DISTINCT canonicalProductId) in the approved snapshot, in scope, not excluded
+  (invalid / quarantined / superseded / explicitly excluded removed). Example 2,020 → 1,842.
+- candidates = active normalized Candidate aggregates (raw findings − merged − invalid/out-of-scope − superseded;
+  example 214 − 18 − 6 − 4 = 186).
+- highPriority = Candidates with effectivePriority IN (HIGH, CRITICAL) (example 42). Never from Score.
+- blocked = COUNT(blocker) WHERE state IN (OPEN, IN_PROGRESS) AND consequence = BLOCKED AND applicable AND NOT
+  superseded (example 7). Blocker records, not candidates; a "blocked candidates" count would be a separate field.
+- Attention Required = top N active actionable blockers ORDER BY severity DESC, dueDate ASC, createdAt ASC;
+  shows severity, subject/candidate, deterministic message, blocker domain; row links to Candidate Review with
+  blocker focus. Not a candidate table.
+- API: {runId, snapshotId, metrics{sourceProducts, candidates, highPriority, blocked},
+  detectorSummary{rawFindings, duplicate, overlap, legacy, complexity, operationalBurden}, projectionVersion}.
+- Navigation: Open Candidates → Explorer (All Candidates); High Priority card → VIEW-HIGH-PRIORITY; Blocked
+  card → VIEW-BLOCKED; Attention row → /candidates/{id}?focus=blocker&blockerId=….
+
+## Detectors (findings, not candidates; thresholds live in a versioned Detector Pack)
+- DUPLICATE: similarity = .30 service + .20 cpq + .15 eligibility + .10 pricingStructure + .15 technical
+  + .10 lifecycle. Strong ≥ .90; probable review band .80–.899. Identity never inferred from similarity.
+- OVERLAP: .40 capability + .25 segment + .15 channel/market + .15 useCase + .05 substitution; ≥ .70 and
+  duplicateSimilarity < duplicate threshold.
+- LEGACY: endOfSale OR criticalDependencySunset (within horizon) OR legacyProvisioningWorkflow OR
+  (replacementAvailable AND legacyArchitectureFlag). Installed base > 0 → migrate, never silent retire.
+- COMPLEXITY: .25 variant + .25 rule + .15 bundleDepth + .15 attributeEntropy + .20 manualException (each
+  normalised to family P95, capped 1); ≥ .75 or a hard limit exceeded.
+- OPERATIONAL_BURDEN: .30 fallout + .20 manualTouch + .20 incident + .15 provisioningException + .15 handling
+  (family P95 normalised); ≥ .70. Only approved aggregates.
+- Every finding persists detectorType, detectorVersion, factor values, threshold, Evidence IDs.
+- Primary type precedence (pinned, policy may override): DUPLICATE > OVERLAP > LEGACY > COMPLEXITY >
+  OPERATIONAL_BURDEN; supporting types retained.
+- Explorer also has a LOW_ADOPTION view (no detector formula given).
+
+## Candidate normalization
+- Resolve subjects to canonicalProductIds in the snapshot; sort; dedupe; reject if a subject is invalid/out of
+  scope.
+- candidateGroupKey = SHA256(runId + snapshotId + groupingScope + sorted(productIds) + groupingPolicyVersion);
+  groupingScope normally excludes detector type (optionally actionClass).
+- One Candidate per key; attach all findings (ids, types, scores, factors); primaryType by precedence; union
+  Evidence IDs; keep max detector signal separately.
+- INVALID / OUT_OF_SCOPE / SUPERSEDED (child snapshot replacement); never physically deleted; lineage kept.
+
+## Opportunity Score, Priority, Status, Blocker (all separate)
+- Opportunity Score = round(100 × (.35 signal + .20 commercialValue + .20 technicalFeasibility
+  + .15 operationalBenefit + .10 strategicAlignment)) from the pinned Scoring Profile (CAND-1042: 92).
+- Similarity = primary detector similarity (CAND-1042: 0.93/0.94; persist one authoritative value).
+- AI confidence = metadata of an accepted AI explanation only (CAND-1042: 0.87); null in NO_LLM; never blended
+  into score, priority, readiness or approval.
+- Priority: priorityIndex = .25 businessImpact + .20 exposure + .15 operationalBurden + .15 legacyUrgency
+  + .10 regulatoryRisk + .10 dependencyCriticality + .05 strategicAlignment (each 0–100). Bands 0–39 LOW,
+  40–64 MEDIUM, 65–84 HIGH, 85–100 CRITICAL. effectivePriority = MAX(base, policy overrides: regulatory,
+  sunset, dependency, customer impact). Sunset urgency: 100 ≤ 90d, 80 ≤ 180d, 60 ≤ 365d.
+- Candidate Status: REVIEW, BLOCKED, EVIDENCE_GAP, DECISION, APPROVAL, APPROVED (precedence
+  BLOCKED/EVIDENCE_GAP/APPROVAL/DECISION/REVIEW).
+- Blocker: separate persisted record; category EVIDENCE, VALIDATION, POLICY, DEPENDENCY, WORKFLOW; state OPEN,
+  IN_PROGRESS, RESOLVED, WAIVED; consequence BLOCKED or WARNING_ONLY; severity LOW–CRITICAL (from type, policy
+  consequence, exposure, SLA; not copied from priority); domain RISK, COMMERCIAL, ARCHITECTURE, DATA,
+  PROVISIONING, BILLING, REGULATORY, SECURITY. Created/resolved by services as facts change.
+
+## Candidate Explorer (screen 07)
+- General workspace over all active candidates; columns ID, Products, Type, Score, Priority, Recommendation,
+  Impact (compact text from structured facts, e.g. "£480k / 86k subs"), Status.
+- Saved views (configuration, not copies; TEAM or personal; server-side filter metadata): All Candidates;
+  High-priority (VIEW-HIGH-PRIORITY: priority IN HIGH,CRITICAL; sort priority desc, score desc); Blocked;
+  Evidence Gaps; Near Duplicates; Legacy Dependencies; Operational Burden; Low Adoption; Ready for Decision
+  (REVIEW + readiness PASS); In Approval.
+- Filters shown == effectiveFilters executed (the mock-up's Score ≥ 60 showing 57 and Status=review showing
+  blocked rows must NOT be reproduced). Response: inventoryTotal and filteredCount separately, projectionVersion.
+
+## Candidate Review (screens 08/12)
+- Header, recommendation (enum + target + conditions; deterministic template text), AI confidence, opportunity
+  score, similarity, subscribers (exact 86,214; UI may show 86k), MRR (amount minor units/decimal + currency +
+  period), billing systems (COUNT DISTINCT applicable billing dependencies, excluding deprecated).
+- API returns exact values + formatting metadata; UI never recomputes rounded metrics.
+- Recommendation rule (example): duplicateSignal ≥ threshold AND score ≥ recommendedThreshold AND
+  targetEligible AND technicalGate = PASS → CONSOLIDATE; protectedPriceContracts > 0 → condition
+  PRESERVE_CONTRACTED_PRICE_UNTIL_RENEWAL (condition, not a different action).
+- Evidence tab rows = structured facts {evidenceId, sourceDomain, snapshotId, observedAt, freshness, validation}:
+  product equivalence, customer impact, operational impact (falloutMultiple = product / family baseline;
+  NOT_ASSESSED if baseline insufficient), dependency (legacy billing code).
+- Tabs: Impact, Alternatives ({action, targetId, feasibilityStatus, evidenceCoverage, expectedImpact,
+  blockingReasons, evidenceIds}; only actions allowed by type/targets/policy), Policies, Discussion (comments,
+  never evidence).
+- Decision readiness gates: actionPermitted, targetEligibility, minimumEvidenceCoverage,
+  technicalEquivalenceGate, criticalConflicts, freshness, preDecisionPolicy. continueToDecisionEnabled =
+  all PASS OR selectedAction = INVESTIGATE. Server-gated; fails closed if snapshot/candidate/policy changed.
+  Continue opens the Decision screen; it never creates or approves a Decision.
+- Request evidence: system pre-generates the logical evidence contract; user picks owner/due date/channel;
+  POST /candidates/{id}/evidence-requests. Accepted return → child snapshot → targeted reassessment.
+- Optional AI explanation: Context Envelope (facts EV-*, impact, policy limits) → AI policy → pinned prompt →
+  JSON schema + citation validation → accepted or deterministic template.
+- E2E example (use as acceptance test): RUN-CONSUMER-MOBILE-Q4, SNAP-005; PRD-V1/PRD-V2 Mobile Data 15GB;
+  evidence EV-101..EV-111 (capabilities, eligibility .97, technical .92, 86,214 subs, 4,209 protected-price
+  contracts, MRR GBP 480,000/month, fallout 8.4% vs 3.5% → 2.4×, billing BILL-A + BILL-LEGACY, legacy code);
+  similarity .94; score factors .94/.90/.92/.86/.98 → 92; CONSOLIDATE to PRD-V2 + preserve-price condition;
+  gap branch: provisioning compatibility missing → technical equivalence NOT_ASSESSED → readiness BLOCKED,
+  Request evidence enabled, Continue disabled → SNAP-006 → reassess → enabled.

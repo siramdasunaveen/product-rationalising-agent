@@ -9,4 +9,5 @@ export type { Run, RunListItem } from "./api/runs";
 export type { Me, Manifest, NavItem } from "./api/identity";
 export { AssessmentsScreen } from "./screens/AssessmentsScreen";
 export { CreateRunScopeScreen } from "./screens/CreateRunScopeScreen";
+export { EvidenceHubScreen } from "./screens/EvidenceHubScreen";
 export { PlaceholderScreen } from "./screens/PlaceholderScreen";

@@ -361,6 +361,82 @@ def check_crosswalk_against(content: dict, canonical: dict) -> list[FieldError]:
 
 
 # ---------------------------------------------------------------------------
+# Evidence template: governed Excel columns of an evidence domain -> canonical fields
+# ---------------------------------------------------------------------------
+
+EVIDENCE_TEMPLATE_JSON = {
+    "type": "object",
+    "required": ["domain", "canonicalSchema", "columns"],
+    "additionalProperties": False,
+    "properties": {
+        "description": DESCRIPTION,
+        "domain": {"type": "string", "pattern": r"^[A-Z][A-Z0-9_]*$", "maxLength": 64},
+        "canonicalSchema": ARTIFACT_KEY,
+        "sheetName": {"type": "string", "minLength": 1, "maxLength": 31},
+        "columns": {
+            "type": "array", "minItems": 1, "maxItems": 200,
+            "items": {
+                "type": "object",
+                "required": ["header"],
+                "additionalProperties": False,
+                "properties": {
+                    "header": {"type": "string", "pattern": TRIMMED, "maxLength": 100},
+                    "required": {"type": "boolean"},
+                    # At least one column of the same group must be present (e.g. Product ID or Service Spec ID).
+                    "oneOfGroup": {"type": "string", "pattern": r"^[a-z][a-zA-Z0-9]*$", "maxLength": 40},
+                    "target": {
+                        "type": "object",
+                        "required": ["entity", "field"],
+                        "additionalProperties": False,
+                        "properties": {"entity": ENTITY_NAME, "field": FIELD_NAME},
+                    },
+                    "relationship": {"type": "string", "pattern": r"^[A-Z][A-Z0-9_]*$", "maxLength": 64},
+                    "lookup": ARTIFACT_KEY,
+                    "description": {"type": "string", "maxLength": 500},
+                    "example": {"type": "string", "maxLength": 100},
+                },
+            },
+        },
+    },
+}
+
+
+def check_evidence_template(content: dict) -> list[FieldError]:
+    errors: list[FieldError] = []
+    seen: dict[str, int] = {}
+    groups: dict[str, list[int]] = {}
+    for i, col in enumerate(content["columns"]):
+        key = " ".join(col["header"].split()).casefold()
+        if key in seen:
+            errors.append(FieldError(f"columns[{i}].header", f"Header {col['header']!r} is already columns[{seen[key]}]"))
+        else:
+            seen[key] = i
+        if "oneOfGroup" in col:
+            if col.get("required"):
+                errors.append(FieldError(f"columns[{i}]", "A column in a one-of group cannot also be required"))
+            groups.setdefault(col["oneOfGroup"], []).append(i)
+    for name, members in groups.items():
+        if len(members) < 2:
+            errors.append(FieldError(f"columns[{members[0]}].oneOfGroup", f"Group {name} needs at least two columns"))
+    return errors
+
+
+def check_evidence_template_against(content: dict, canonical: dict) -> list[FieldError]:
+    errors: list[FieldError] = []
+    rel_names = {r["name"] for r in canonical.get("relationships", [])}
+    for i, col in enumerate(content["columns"]):
+        t = col.get("target")
+        if t is not None:
+            if not has_entity(canonical, t["entity"]):
+                errors.append(FieldError(f"columns[{i}].target.entity", f"Entity {t['entity']} is not in the schema"))
+            elif find_field(canonical, t["entity"], t["field"]) is None:
+                errors.append(FieldError(f"columns[{i}].target.field", f"Field {t['field']} is not in {t['entity']}"))
+        if "relationship" in col and col["relationship"] not in rel_names:
+            errors.append(FieldError(f"columns[{i}].relationship", f"Relationship {col['relationship']} is not in the schema"))
+    return errors
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -369,6 +445,7 @@ _SCHEMAS: dict[ArtifactKind, dict] = {
     ArtifactKind.LOOKUP: LOOKUP_SCHEMA_JSON,
     ArtifactKind.TRANSFORM: TRANSFORM_SCHEMA_JSON,
     ArtifactKind.CROSSWALK: CROSSWALK_SCHEMA_JSON,
+    ArtifactKind.EVIDENCE_TEMPLATE: EVIDENCE_TEMPLATE_JSON,
 }
 _VALIDATORS = {k: Draft202012Validator(v) for k, v in _SCHEMAS.items()}
 _CHECKS: dict[ArtifactKind, Callable[[dict], list[FieldError]]] = {
@@ -376,10 +453,12 @@ _CHECKS: dict[ArtifactKind, Callable[[dict], list[FieldError]]] = {
     ArtifactKind.LOOKUP: check_lookup,
     ArtifactKind.TRANSFORM: check_transform,
     ArtifactKind.CROSSWALK: check_crosswalk,
+    ArtifactKind.EVIDENCE_TEMPLATE: check_evidence_template,
 }
 _CROSS_CHECKS: dict[ArtifactKind, Callable[[dict, dict], list[FieldError]]] = {
     ArtifactKind.LOOKUP: check_lookup_against,
     ArtifactKind.CROSSWALK: check_crosswalk_against,
+    ArtifactKind.EVIDENCE_TEMPLATE: check_evidence_template_against,
 }
 
 MAX_STRUCTURE_ERRORS = 50
@@ -405,6 +484,9 @@ def canonical_schema_key(kind: ArtifactKind | str, content: Any) -> str | None:
     """The canonical schema a lookup or crosswalk points to (None for other kinds or bad content)."""
     if ArtifactKind(kind) not in _CROSS_CHECKS or not isinstance(content, dict):
         return None
+    if ArtifactKind(kind) is ArtifactKind.EVIDENCE_TEMPLATE:
+        key = content.get("canonicalSchema")
+        return key if isinstance(key, str) else None
     target = content.get("target")
     return target.get("schema") if isinstance(target, dict) else None
 
@@ -423,8 +505,9 @@ def validate_content(kind: ArtifactKind | str, content: Any, *,
     errors = _CHECKS[kind](content)
     if kind in _CROSS_CHECKS:
         if canonical is None:
-            errors.append(FieldError("target.schema",
-                                     f"No published canonical schema {content['target']['schema']}"))
+            key = canonical_schema_key(kind, content)
+            path = "canonicalSchema" if kind is ArtifactKind.EVIDENCE_TEMPLATE else "target.schema"
+            errors.append(FieldError(path, f"No published canonical schema {key}"))
         else:
             errors += _CROSS_CHECKS[kind](content, canonical)
     return errors

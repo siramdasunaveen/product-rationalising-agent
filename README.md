@@ -55,7 +55,7 @@ cd backend
 .\.venv\Scripts\alembic.exe upgrade head
 .\.venv\Scripts\python.exe -m app.cli seed-demo-users
 .\.venv\Scripts\python.exe -m app.cli seed-reference-data      # demo portfolios, markets, product families
-.\.venv\Scripts\python.exe -m app.cli seed-artifacts           # TELCO-CANONICAL@1.0 + starter lookups/transforms
+.\.venv\Scripts\python.exe -m app.cli seed-artifacts           # TELCO-CANONICAL@1.0, lookups, transforms, Excel templates
 cd ..
 
 # 5. Frontend dependencies
@@ -135,6 +135,19 @@ Each version goes DRAFT → PUBLISHED → DEPRECATED / SUPERSEDED / RETIRED. Onl
 the database enforces this with triggers. To change a published version, clone it, edit the draft and
 publish it; the old version becomes SUPERSEDED. Runs pin `KEY@major.minor` plus a SHA-256 digest of the
 content. Data Stewards and Agent Admins edit drafts; only Agent Admins publish.
+
+## Evidence Hub (Excel intake)
+
+Wizard step 2 (`/runs/{id}/evidence`). Confirm the proposed evidence domains, download a domain's governed
+template, fill it in and upload it. Each .xlsx file goes through these stages:
+1. The upload checks type, size, macros, password, damage and sheet count, and rejects a bad file at once.
+2. The file waits in quarantine while the **worker** scans it and reads its sheets. It is rejected if it has
+   too many rows or columns, or if it looks like subscriber or personal data. Rejected files are deleted.
+3. You choose the sheet and header row. Confirming them records an immutable source schema version: the same
+   headers reuse it, and changed headers create a new version.
+
+Uploads stay "Scanning and reading…" until the worker (Terminal 2) is running. The malware scanner is a
+local stub that only detects the EICAR test file; a real scanner plugs in behind the `MalwareScanner` port.
 
 ## AI
 
