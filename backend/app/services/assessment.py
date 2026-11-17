@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import AnalysisRun, Blocker, Candidate, DetectorFinding, EvidenceSnapshot, Run
 from app.domain import assessment as am
+from app.domain import decision_readiness as dr
 from app.domain import readiness as rd
 from app.domain.artifacts import ArtifactKind
 from app.domain.detectors import ProductFeatures
@@ -198,7 +199,20 @@ def recommend(session: Session, run: Run, analysis: AnalysisRun, manifest: dict,
     for b in session.scalars(select(Blocker).where(Blocker.run_id == run.id, Blocker.state.in_(ACTIVE),
                                                    Blocker.applicable.is_(True), Blocker.superseded.is_(False))):
         active[b.candidate_code].append({"category": b.category, "consequence": b.consequence})
+    ctx: am.Context = pending["ctx"]
+    blocker_rows = defaultdict(list)
+    for b in session.scalars(select(Blocker).where(Blocker.run_id == run.id, Blocker.state.in_(ACTIVE),
+                                                   Blocker.applicable.is_(True), Blocker.superseded.is_(False))):
+        blocker_rows[b.candidate_code].append({"category": b.category, "consequence": b.consequence,
+                                               "message": b.message})
     for row, r in pending["results"]:
+        rec = dict(row.recommendation or {})
+        rec["gateFacts"] = r["gateFacts"]
+        if rec.get("action"):
+            rec["decisionReadiness"] = dr.evaluate(
+                rec["action"], rec.get("targetProductId"), row.primary_type, list(row.supporting_types),
+                r["gateFacts"], ctx.settings, ctx.dispositions, blocker_rows.get(row.code, []), list(row.subjects))
+        row.recommendation = rec
         row.candidate_status = am.candidate_status(active.get(row.code, []), r["guardrail"])
         row.assessment_hash = _hash({"score": row.opportunity_score, "inputs": row.score_inputs,
                                      "dimensions": row.dimensions, "guardrail": row.guardrail,

@@ -198,6 +198,20 @@ The guides give the Opportunity Score and priority formulas and the CAND-1042 va
 | Candidate Status | BLOCKED (any active blocking non-evidence blocker) > EVIDENCE_GAP (active blocking evidence blocker or mandatory dimension not assessed) > APPROVAL > DECISION > REVIEW; APPROVED after approval | Proposed |
 | Run Overview | Attention Required = top 5 active, applicable, blocking blockers (warnings stay on Candidate Review) with the total count; metrics are null until an analysis succeeds; projectionVersion increases with every assessment | Proposed |
 
+## Step 12: Candidate Explorer and Candidate Review (built 17 Nov 2026 in continuous mode; developer to review)
+| Topic | Decision | Status |
+|---|---|---|
+| Saved views | Nine built-in team views (All, High priority, Blocked, Evidence gaps, Near duplicates, Legacy, Operational burden, Ready for decision, In approval) are code, not data; personal views are configuration only (filters, sort, visible columns) owned by one user, never shared, never copies of candidates. Explicit query parameters replace the same key of the view; the response reports exactly the filters applied (effectiveFilters) and inventoryTotal separately from filteredCount | Proposed |
+| Hidden candidates | Candidates hidden by the below-review treatment stay out of every view unless includeHidden is set; they are always counted in inventoryTotal | Proposed |
+| Sorting | Priority and status sort by severity order, never alphabetically; candidate id breaks every tie | Proposed |
+| Decision readiness | Seven server-side gates per selected action: actionPermitted (candidate type plus rules 3 and 4), targetEligibility, minimumEvidenceCoverage (commercial, plus technical where the technical gate applies), technicalEquivalenceGate (NOT_ASSESSED is never a FAIL), criticalConflicts, freshness, preDecisionPolicy (rule 6 disposition domains plus blocking dependency/policy blockers). Continue to Decision is enabled only when every gate passes or the action is INVESTIGATE; the pre-check fails closed (409 stale) when the analysis changed since the client loaded the candidate | Proposed |
+| Gate facts | Persisted with the candidate at assessment (coverage per product, stale domains, dimension status/score/coverage, footprint, target eligibility, technical pass mark) so gates never reload the graph; a candidate assessed before gate facts existed is BLOCKED until reassessed | Proposed |
+| Evidence tab | Six fixed rows (product equivalence, customer impact, operational impact, dependency, technical fulfilment, lifecycle) with the evidence ids, source domain, snapshot, earliest observed date, freshness (STALE if any fact is stale) and validation (CONFLICTED if any fact is conflicted). Rows without evidence show "Not assessed", never a value | Proposed |
+| Alternatives | Every action the candidate type allows, each evaluated with the same gates; FEASIBLE only when all pass, NOT_ASSESSED when a gate is not assessed, else BLOCKED. Choosing an alternative changes nothing until the decision is submitted | Proposed |
+| AI explanation | Optional, on request, task RECOMMENDATION_REASONING through the AI runtime; the data block is marked untrusted; the schema requires 1-8 sentences each citing evidence ids that must exist for the candidate; otherwise retry then the deterministic template. AI confidence (per mille) is stored only with an accepted LLM explanation, flagged below threshold when under the runtime profile's aiConfidenceThreshold, shown as a percentage and never used in any score or gate. Explanations and comments are append-only | Proposed |
+| Discussion | Comments are collaboration only (never evidence), 1-2000 characters, control and bidi characters stripped, audited | Proposed |
+| Candidate references | A candidate is addressed by its stable code (CAND-0001) or id; the id of a superseded version resolves to the current candidate with the same code | Proposed |
+
 ## Production security (developer's request, 17 Nov 2026)
 | Topic | Decision | Status |
 |---|---|---|

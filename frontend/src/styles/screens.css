@@ -543,3 +543,37 @@
 .pra-overview__retry { margin-left: var(--space-3); }
 .pra-overview__more { font-size: 13px; font-weight: 400; }
 @media (max-width: 900px) { .pra-overview__row { grid-template-columns: 1fr; } }
+
+/* Step 12: Candidate Explorer (07) and Candidate Review (08/12) */
+.pra-explorer { display: grid; grid-template-columns: 220px 1fr; gap: var(--space-5); align-items: start; }
+.pra-explorer__views { display: grid; gap: var(--space-3); }
+.pra-explorer__scope { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin: var(--space-2) 0; }
+.pra-explorer__view { display: flex; align-items: center; gap: var(--space-1); margin-bottom: var(--space-1); }
+.pra-explorer__view .pra-chip { text-align: left; flex: 1; }
+.pra-explorer__del { padding: 2px 8px; }
+.pra-explorer__none { font-size: 12px; }
+.pra-explorer__save { display: grid; gap: var(--space-2); }
+.pra-explorer__save .pra-input { padding: 6px 8px; font-size: 12px; }
+.pra-explorer__filters { display: grid; gap: var(--space-2); margin-bottom: var(--space-4); }
+.pra-explorer__filters > .pra-input { padding: 8px 10px; max-width: 360px; }
+.pra-explorer__group { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); font-size: 12px; }
+.pra-explorer__group > .pra-muted { min-width: 110px; }
+.pra-explorer__hidden { font-size: 13px; }
+.pra-explorer__hidden select.pra-input { padding: 4px 8px; font-size: 12px; margin-left: var(--space-2); }
+.pra-explorer__row { grid-template-columns: 95px 1.6fr 1.1fr 60px 90px 1fr 1fr 110px; font-size: 13px; }
+.pra-review__cards { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.pra-review__rec p { margin: var(--space-2) 0; }
+.pra-review__dims { display: flex; flex-wrap: wrap; gap: var(--space-4); font-size: 13px; margin: var(--space-3) 0; }
+.pra-review__explain { border-top: 1px solid var(--color-border); padding-top: var(--space-3); display: grid; gap: var(--space-2); }
+.pra-review__sentences { margin: var(--space-2) 0; padding-left: var(--space-5); font-size: 13px; }
+.pra-review__focus { outline: 2px solid var(--color-accent); border-radius: var(--radius-sm); padding: var(--space-1); }
+.pra-tabs { display: flex; gap: var(--space-1); margin: var(--space-4) 0 var(--space-3); }
+.pra-review__ev { grid-template-columns: 1.1fr 2fr 1.3fr 80px 100px 90px 100px; font-size: 13px; }
+.pra-review__alt { grid-template-columns: 1.1fr 1fr 110px 1.6fr 2fr; font-size: 13px; }
+.pra-review__alt--on { border-color: var(--color-accent); background: #eef1ff; }
+.pra-review__policies, .pra-review__gates, .pra-review__comments { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2); font-size: 13px; }
+.pra-review__comments li { padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.pra-review__comment { display: grid; gap: var(--space-2); margin-top: var(--space-3); justify-items: end; }
+.pra-review__comment textarea { width: 100%; }
+@media (max-width: 900px) { .pra-explorer { grid-template-columns: 1fr; }
+  .pra-explorer__row, .pra-review__ev, .pra-review__alt { grid-template-columns: 1fr; } }

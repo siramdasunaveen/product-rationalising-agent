@@ -101,7 +101,7 @@ field specification were supplied; revised again the same day after the 5 candid
 - Done when: projection rebuild reproduces 1,842 / 186 / 42 / 7 on the worked dataset; CAND-1042 = score 92,
   CONSOLIDATE + preserve-price condition.
 
-## Step 12: Candidate Explorer and Candidate Review · TODO
+## Step 12: Candidate Explorer and Candidate Review · DONE
 - Explorer (screen 07): all candidates + saved views (team/personal, configuration only); filters shown ==
   effectiveFilters; inventoryTotal vs filteredCount; no bulk irreversible actions.
 - Review (screens 08, 12): metric cards with exact values + formatting metadata; tabs Evidence / Impact /

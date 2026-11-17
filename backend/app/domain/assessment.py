@@ -687,6 +687,24 @@ def candidate_status(active_blockers: list[dict[str, Any]], guard: str, decision
     return "REVIEW"
 
 
+def gate_facts(c: CandidateInput, ctx: Context, rec: dict[str, Any], dims: dict[str, dict]) -> dict[str, Any]:
+    """The snapshot facts the decision-readiness gates need, persisted with the candidate (no graph reload)."""
+    ids = list(dict.fromkeys(c.subjects + [x for x in (rec["targetProductId"],) if x]
+                             + [ctx.products[s].replacement for s in c.subjects
+                                if s in ctx.products and ctx.products[s].replacement]))
+    return {
+        "coverage": {pid: sorted(ctx.coverage.get(pid, set())) for pid in c.subjects},
+        "staleDomains": sorted(ctx.stale_domains),
+        "dimensions": {d: {"status": v["status"], "score": v["score"], "coverage": v["coverage"]}
+                       for d, v in dims.items()},
+        "footprint": {pid: footprint(ctx.products[pid]) for pid in c.subjects if pid in ctx.products},
+        "eligible": {pid: eligible_target(ctx.products[pid]) for pid in ids if pid in ctx.products},
+        "sourceProductId": rec["sourceProductId"],
+        "targetProductId": rec["targetProductId"],
+        "techPass": ctx.rules()["technicalEquivalencePass"],
+    }
+
+
 # ---------------------------------------------------------------------------
 # Whole candidate
 # ---------------------------------------------------------------------------
@@ -722,4 +740,5 @@ def assess(c: CandidateInput, ctx: Context) -> dict[str, Any]:
         "impact": impact(c, ctx, rec["sourceProductId"]),
         "priority": prio,
         "blockers": drafts,
+        "gateFacts": gate_facts(c, ctx, rec, dims),
     }

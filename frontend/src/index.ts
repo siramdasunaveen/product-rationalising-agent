@@ -17,4 +17,6 @@ export { AIRuntimeScreen } from "./screens/AIRuntimeScreen";
 export { ScoringRouteScreen } from "./screens/ScoringRouteScreen";
 export { ReviewStartScreen } from "./screens/ReviewStartScreen";
 export { RunOverviewScreen } from "./screens/RunOverviewScreen";
+export { CandidateExplorerScreen } from "./screens/CandidateExplorerScreen";
+export { CandidateReviewScreen } from "./screens/CandidateReviewScreen";
 export { PlaceholderScreen } from "./screens/PlaceholderScreen";

@@ -199,6 +199,17 @@ source products, candidates, high priority and blocked counts (with how they rec
 blockers that need attention. Every number is deterministic: Opportunity Score, the three assessment dimensions,
 recommendation (with disposition guards), priority (separate from the score) and blocker records.
 
+## Candidates
+
+**Candidate Explorer** lists every active candidate of the run under team views (built in) or personal saved views
+(configuration only). The filter bar shows exactly the filters the server applied; the inventory total and the
+filtered count are shown apart. **Candidate Review** shows exact metrics with their display strings, the
+recommendation with its conditions, the three assessment dimensions, blockers, and tabs for Evidence (with evidence
+ids, snapshot, freshness and validation per row), Impact, Alternatives, Policies and Discussion. *Continue to
+Decision* is decided by the server: seven readiness gates for the chosen action, re-checked at the moment of
+continuing and failing closed if the candidate was reassessed meanwhile. An AI explanation is optional, must cite
+existing evidence ids and falls back to a deterministic template; its confidence is never used in a score.
+
 ## AI
 
 Every AI task goes through the **AI Runtime** (tab visible to Agent Admins). Approved models and endpoints are

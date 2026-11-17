@@ -17,6 +17,7 @@ from app.api import (
     ai_runtime,
     analysis,
     auth,
+    candidates,
     configuration,
     evidence,
     health,
@@ -87,6 +88,7 @@ def create_app(
     app.include_router(ai_runtime.router, prefix=API_PREFIX)
     app.include_router(configuration.router, prefix=API_PREFIX)
     app.include_router(analysis.router, prefix=API_PREFIX)
+    app.include_router(candidates.router, prefix=API_PREFIX)
 
     @app.exception_handler(ServiceError)
     def _service_error(_: Request, exc: ServiceError) -> JSONResponse:

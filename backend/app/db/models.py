@@ -814,3 +814,47 @@ class Blocker(IdMixin, TenantMixin, CreatedAtMixin, Base):
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     resolved_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
     resolution: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class CandidateComment(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """Discussion on Candidate Review: human collaboration only, never evidence. Append-only; author by id."""
+
+    __tablename__ = "candidate_comment"
+
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.run.id"), nullable=False)
+    candidate_code: Mapped[str] = mapped_column(String(16), nullable=False)
+    author_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class CandidateExplanation(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """An accepted recommendation explanation (validated LLM output or the deterministic template). Append-only.
+    AI confidence lives here only; it never feeds a score, priority, readiness or approval."""
+
+    __tablename__ = "candidate_explanation"
+
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.run.id"), nullable=False)
+    candidate_code: Mapped[str] = mapped_column(String(16), nullable=False)
+    analysis_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    source: Mapped[str] = mapped_column(String(16), nullable=False)  # llm | fallback
+    deployment_ref: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    model: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    sentences: Mapped[list] = mapped_column(JSONB, nullable=False)  # [{text, evidenceIds}]
+    confidence: Mapped[int | None] = mapped_column(Integer, nullable=True)  # per mille, LLM only
+    below_threshold: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    actor_id: Mapped[str] = mapped_column(String(128), nullable=False)
+
+
+class SavedView(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """A personal Candidate Explorer view: configuration only (filters, sort, columns), never candidate copies."""
+
+    __tablename__ = "saved_view"
+    __table_args__ = (UniqueConstraint("tenant_id", "owner_id", "name", name="uq_saved_view_owner_name"),)
+
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    owner_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    name: Mapped[str] = mapped_column(String(80), nullable=False)
+    scope: Mapped[str] = mapped_column(String(16), nullable=False)  # PERSONAL (team views are built in)
+    filters: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    sort: Mapped[list] = mapped_column(JSONB, nullable=False)
+    visible_columns: Mapped[list] = mapped_column(JSONB, nullable=False)

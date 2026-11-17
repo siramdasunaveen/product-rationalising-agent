@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Navigate, Route, Routes, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
-  AIRuntimeScreen, AssessmentsScreen, CreateRunScopeScreen, EvidenceHubScreen, EvidenceReadinessScreen, MappingRulesScreen,
-  PlaceholderScreen, ReconciliationScreen, ReviewStartScreen, RunOverviewScreen, ScoringRouteScreen, useManifest,
+  AIRuntimeScreen, AssessmentsScreen, CandidateExplorerScreen, CandidateReviewScreen, CreateRunScopeScreen,
+  EvidenceHubScreen, EvidenceReadinessScreen, MappingRulesScreen, PlaceholderScreen, ReconciliationScreen,
+  ReviewStartScreen, RunOverviewScreen, ScoringRouteScreen, useManifest,
 } from "../src";
 import { tokenStore } from "./auth";
 import { Login } from "./Login";
@@ -54,14 +55,8 @@ function ScreenRoutes() {
       <Route path="/runs/:runId/scoring" element={<ScoringRoute />} />
       <Route path="/runs/:runId/review" element={<ReviewRoute />} />
       <Route path="/runs/:runId/overview" element={<OverviewRoute />} />
-      <Route
-        path="/runs/:runId/candidates"
-        element={<PlaceholderScreen title="Candidate Explorer" note="Arrives in build step 12." />}
-      />
-      <Route
-        path="/runs/:runId/candidates/:candidateId"
-        element={<PlaceholderScreen title="Candidate Review" note="Arrives in build step 12." />}
-      />
+      <Route path="/runs/:runId/candidates" element={<ExplorerRoute />} />
+      <Route path="/runs/:runId/candidates/:candidateId" element={<CandidateRoute />} />
       {placeholders.map((n) => (
         <Route
           key={n.key}
@@ -172,6 +167,30 @@ function ReviewRoute() {
   return (
     <ReviewStartScreen key={runId} runId={runId!} onEdit={(s) => stepPath(runId!, s) && navigate(stepPath(runId!, s)!)}
       onStarted={() => navigate(`/runs/${runId}/overview`)} onExit={() => navigate("/")} />
+  );
+}
+
+function ExplorerRoute() {
+  const { runId } = useParams();
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  return (
+    <CandidateExplorerScreen key={runId} runId={runId!} initialView={params.get("view") ?? undefined}
+      onOpenCandidate={(id) => navigate(`/runs/${runId}/candidates/${id}`)}
+      onOpenOverview={() => navigate(`/runs/${runId}/overview`)} />
+  );
+}
+
+function CandidateRoute() {
+  const { runId, candidateId } = useParams();
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  return (
+    <CandidateReviewScreen key={candidateId} runId={runId!} candidateRef={candidateId!}
+      focusBlockerId={params.get("blockerId") ?? undefined}
+      onBack={() => navigate(`/runs/${runId}/candidates`)}
+      onContinueToDecision={(id, action, target) =>
+        navigate(`/runs/${runId}/candidates/${id}/decision?action=${action}${target ? `&target=${target}` : ""}`)} />
   );
 }
 
