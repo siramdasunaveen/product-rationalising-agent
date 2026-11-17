@@ -28,5 +28,58 @@ services:
       timeout: 3s
       retries: 20
 
+
+  # Application services: `docker compose --profile app up -d --build`
+  # (infra only: `docker compose up -d`). Settings come from .env (PRA_* variables).
+  api:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file: .env
+    environment:
+      PRA_DATABASE_URL: postgresql+psycopg://pra:pra@postgres:5432/pra
+      PRA_REDIS_URL: redis://redis:6379/0
+      PRA_STORAGE_DIR: /app/var/storage
+      PRA_CORS_ORIGINS: http://localhost:8080
+    volumes:
+      - storage:/app/var/storage
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python -m app.jobs.worker
+    env_file: .env
+    environment:
+      PRA_DATABASE_URL: postgresql+psycopg://pra:pra@postgres:5432/pra
+      PRA_REDIS_URL: redis://redis:6379/0
+      PRA_STORAGE_DIR: /app/var/storage
+    volumes:
+      - storage:/app/var/storage
+    depends_on:
+      api:
+        condition: service_started
+
+  web:
+    profiles: ["app"]
+    build:
+      context: ./frontend
+    environment:
+      API_UPSTREAM: http://api:8000
+    ports:
+      - "8080:8080"
+    depends_on:
+      - api
+
 volumes:
   pgdata:
+  storage:

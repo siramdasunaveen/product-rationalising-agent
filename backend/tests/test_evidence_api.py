@@ -102,8 +102,8 @@ def test_overview_proposes_domains_from_objectives(client, env):
     tech = next(d for d in ov["domains"] if d["key"] == "TECHNICAL_CATALOG")
     assert tech["proposal_reasons"] == ["Objective BSS_SUNSET"] and tech["template_ref"] == "TPL-TECHNICAL-CATALOG@1.0"
     available = {t["type"]: t["available"] for t in tech["source_types"]}
-    assert available == {"API_CONNECTOR": False, "SECURE_QUERY": False, "SCHEDULED_EXTRACT": False,
-                         "EXCEL_UPLOAD": True}
+    assert available == {"API_CONNECTOR": True, "SECURE_QUERY": False, "SCHEDULED_EXTRACT": False,
+                         "EXCEL_UPLOAD": True}  # live connectors since step 15
 
 
 def test_confirm_domains(client, env, db):

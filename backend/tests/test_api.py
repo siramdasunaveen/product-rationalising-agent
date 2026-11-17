@@ -59,7 +59,7 @@ def test_manifest_nav(client, login):
     nav = client.get(f"{API}/manifest", headers=login("viewer")).json()["nav"]
     assert [n["label"] for n in nav] == [
         "Assessments", "Evidence Readiness", "Evidence Needed", "Rationalisation Opportunities",
-        "Decision Approvals", "Transition Plans", "Outcomes & Benefits", "AI Runtime",
+        "Decision Approvals", "Transition Plans", "Outcomes & Benefits", "AI Runtime", "Connectors",
     ]
     by_key = {n["key"]: n for n in nav}
     assert by_key["transition-plans"]["status"] == "not_specified"
