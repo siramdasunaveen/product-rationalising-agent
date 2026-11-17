@@ -693,3 +693,74 @@ class RunManifest(IdMixin, TenantMixin, CreatedAtMixin, Base):
     manifest: Mapped[dict] = mapped_column(JSONB, nullable=False)
     manifest_hash: Mapped[str] = mapped_column(String(71), nullable=False)
     created_by: Mapped[str] = mapped_column(String(128), nullable=False)
+
+
+# ---------------------------------------------------------------------------
+# Analysis (step 10): runs of the workflow, detector findings, candidates
+# ---------------------------------------------------------------------------
+
+class AnalysisRun(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """One execution of the analysis workflow for a run (the first after Start; later ones after accepted
+    evidence). Stages: Discover, Normalize, Analyze, Assess, Recommend (system) then Review, Approve (people)."""
+
+    __tablename__ = "analysis_run"
+    __table_args__ = (UniqueConstraint("run_id", "seq", name="uq_analysis_run_seq"),)
+
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.run.id"), nullable=False, index=True)
+    seq: Mapped[int] = mapped_column(Integer, nullable=False)
+    reason: Mapped[str] = mapped_column(String(40), nullable=False)  # START | REASSESSMENT
+    status: Mapped[str] = mapped_column(String(16), nullable=False)  # QUEUED | RUNNING | SUCCEEDED | FAILED
+    snapshot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.evidence_snapshot.id"), nullable=False)
+    manifest_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    stages: Mapped[list] = mapped_column(JSONB, nullable=False)
+    source_products: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    counts: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    detector_summary: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    result_hash: Mapped[str | None] = mapped_column(String(71), nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    job_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    requested_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class DetectorFinding(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    __tablename__ = "detector_finding"
+
+    analysis_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.analysis_run.id"), nullable=False,
+                                                   index=True)
+    run_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    finding_key: Mapped[str] = mapped_column(String(32), nullable=False)
+    detector_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    detector_version: Mapped[str] = mapped_column(String(16), nullable=False)
+    subjects: Mapped[list] = mapped_column(JSONB, nullable=False)
+    signal: Mapped[int] = mapped_column(Integer, nullable=False)  # per mille
+    threshold: Mapped[int] = mapped_column(Integer, nullable=False)
+    band: Mapped[str] = mapped_column(String(16), nullable=False)
+    factors: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    coverage: Mapped[int] = mapped_column(Integer, nullable=False)
+    evidence_ids: Mapped[list] = mapped_column(JSONB, nullable=False)
+    notes: Mapped[list] = mapped_column(JSONB, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)  # ATTACHED | MERGED | INVALID | OUT_OF_SCOPE
+    candidate_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+
+
+class Candidate(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """A normalized rationalisation opportunity. Never deleted: INVALID / OUT_OF_SCOPE / SUPERSEDED keep lineage."""
+
+    __tablename__ = "candidate"
+    __table_args__ = (UniqueConstraint("analysis_id", "group_key", name="uq_candidate_analysis_group"),)
+
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.run.id"), nullable=False, index=True)
+    analysis_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.analysis_run.id"), nullable=False,
+                                                   index=True)
+    code: Mapped[str] = mapped_column(String(16), nullable=False)
+    group_key: Mapped[str] = mapped_column(String(71), nullable=False)
+    subjects: Mapped[list] = mapped_column(JSONB, nullable=False)
+    primary_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    supporting_types: Mapped[list] = mapped_column(JSONB, nullable=False)
+    max_signal: Mapped[int] = mapped_column(Integer, nullable=False)
+    finding_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    evidence_ids: Mapped[list] = mapped_column(JSONB, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)  # ACTIVE | INVALID | OUT_OF_SCOPE | SUPERSEDED
+    superseded_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    lineage: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)

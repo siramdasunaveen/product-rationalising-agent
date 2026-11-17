@@ -15,6 +15,7 @@ from app import __version__
 from app.adapters.registry import Platform, build_platform
 from app.api import (
     ai_runtime,
+    analysis,
     auth,
     configuration,
     evidence,
@@ -85,6 +86,7 @@ def create_app(
     app.include_router(readiness.router, prefix=API_PREFIX)
     app.include_router(ai_runtime.router, prefix=API_PREFIX)
     app.include_router(configuration.router, prefix=API_PREFIX)
+    app.include_router(analysis.router, prefix=API_PREFIX)
 
     @app.exception_handler(ServiceError)
     def _service_error(_: Request, exc: ServiceError) -> JSONResponse:

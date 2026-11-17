@@ -81,7 +81,7 @@ field specification were supplied; revised again the same day after the 5 candid
   versions, digests; never "latest").
 - Done when: reopening a run reproduces the same pinned configuration after newer artifacts are published.
 
-## Step 10: Analysis run — detectors and candidate normalization · TODO
+## Step 10: Analysis run — detectors and candidate normalization · DONE
 - Background workflow with stages Discover → Normalize → Analyze → Assess → Recommend → Review → Approve.
 - Source Products (distinct in-scope canonical products, with exclusion counts).
 - Detectors DUPLICATE, OVERLAP, LEGACY, COMPLEXITY, OPERATIONAL_BURDEN: findings persist type, version,

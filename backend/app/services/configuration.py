@@ -305,8 +305,10 @@ def start(session: Session, platform: Platform, principal: Principal, run_id: uu
 
 
 def on_started(session: Session, platform: Platform, run: Run) -> None:
-    """Hook for the analysis workflow (step 10 replaces this with the background job)."""
-    return None
+    """Queue the analysis workflow (step 10) for the freshly started run."""
+    from app.services import analysis
+
+    analysis.request_analysis(session, platform, run, run.started_by or "system", reason="START")
 
 
 def manifest_of(session: Session, run: Run) -> RunManifest | None:

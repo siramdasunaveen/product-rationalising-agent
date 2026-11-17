@@ -166,6 +166,18 @@
 | Start | Needs `run.start`, zero blocking issues and every warning acknowledged (actor and time stored). Freezes an immutable Run Manifest (exact refs and digests of detector, scoring, priority, policy, readiness, precedence and canonical artifacts; snapshot code and hash; resolved settings with source; AI profile and per-task routes; recommendation trace; acknowledgements) and sets the run to ANALYSING; events RunStarted and AnalysisRequested | Proposed |
 | Approval routing | Lives in the policy pack: RETAIN/INVESTIGATE need product; SIMPLIFY product + commercial; CONSOLIDATE/STANDARDISE/MIGRATE/RETIRE product + commercial + architecture; self-approval off | Proposed |
 
+## Step 10: analysis workflow and detectors (built 17 Nov 2026 in continuous mode; developer to review)
+| Topic | Decision | Status |
+|---|---|---|
+| Trigger | Start queues the analysis job; stages Discover, Normalize, Analyze, Assess, Recommend run in the worker, then Review is WAITING. Success moves the run to REVIEW; a failure marks the stage and run FAILED and can be retried with the same pinned configuration | Proposed |
+| Source products | Products of the pinned snapshot whose family (name or code) is a selected family or one of its descendants, and whose market (if given) is a selected market. Excluded and counted: invalid (no name/family, or a disputed name), out-of-scope family, out-of-scope market | Proposed |
+| Detector date | "Today" for detectors is the snapshot approval date, so the same snapshot and packs always reproduce the same findings | Proposed |
+| Factor definitions | Duplicate: service = name tokens without version markers, cpq = shared configuration/eligibility options, eligibility = segment/market/channel, pricing = list price closeness, technical = shared services and resources, lifecycle = same status or one replaces the other. Overlap: capability = same service (1) or service type (0.5), segment, channel/market, use case = name tokens, substitution = replacement or parent. Legacy: end of sale, legacy billing or sunset in horizon, legacy workflow, replacement with legacy architecture; signal 0.6 + 0.1 per condition | Proposed |
+| Missing factors | A factor without evidence is NOT_ASSESSED and left out with the weights re-normalised (never 0). A pair needs at least 60% of the factor weight assessed, otherwise no finding | Proposed |
+| P95 baseline | Complexity and operational burden normalise to the scope family's P95 only with at least 10 products that have the value; below that they are not assessed for that family (a P95 of fewer values is just the maximum) | Proposed |
+| Pairs | Duplicate and overlap pairs are only compared within the same scope family | Proposed |
+| Candidate codes | CAND-0001 … per run; a reassessment that finds the same product set keeps the code and the earlier candidate becomes SUPERSEDED with a pointer to its successor | Proposed |
+
 ## Proposed defaults (AI Studio contract not decided yet; confirm with the colleague)
 | Topic | Default | Status |
 |---|---|---|
