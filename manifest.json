@@ -57,7 +57,8 @@
     { "key": "decision-approvals", "label": "Decision Approvals", "path": "/decision-approvals", "permission": "read", "sidebarLabel": "Decision Approvals" },
     { "key": "transition-plans", "label": "Transition Plans", "path": "/transition-plans", "permission": "read", "status": "not_specified", "sidebarLabel": "Transition Plans" },
     { "key": "outcomes-benefits", "label": "Outcomes & Benefits", "path": "/outcomes-benefits", "permission": "read", "status": "not_specified" },
-    { "key": "ai-runtime", "label": "AI Runtime", "path": "/ai-runtime", "permission": "config.ai" }
+    { "key": "ai-runtime", "label": "AI Runtime", "path": "/ai-runtime", "permission": "config.ai" },
+    { "key": "connectors", "label": "Connectors", "path": "/connectors", "permission": "connector.manage" }
   ],
   "requiredConnectors": [],
   "optionalConnectors": ["excel", "salesforce"]

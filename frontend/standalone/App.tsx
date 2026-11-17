@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Navigate, Route, Routes, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   AIRuntimeScreen, AssessmentsScreen, CandidateExplorerScreen, CandidateReviewScreen, CreateRunScopeScreen,
-  ApprovalScreen, ApprovalsScreen, DecisionScreen, EvidenceRequestScreen, EvidenceRequestsScreen,
+  ApprovalScreen, ApprovalsScreen, ConnectorsScreen, DecisionScreen, EvidenceRequestScreen, EvidenceRequestsScreen,
   EvidenceHubScreen, EvidenceReadinessScreen, MappingRulesScreen, PlaceholderScreen, ReconciliationScreen,
   ReviewStartScreen, RunOverviewScreen, ScoringRouteScreen, useManifest,
 } from "../src";
@@ -40,7 +40,7 @@ export function App() {
 
 function ScreenRoutes() {
   const { data: manifest } = useManifest();
-  const built = new Set(["/", "/evidence-readiness", "/ai-runtime", "/evidence-needed", "/decision-approvals"]);
+  const built = new Set(["/", "/evidence-readiness", "/ai-runtime", "/evidence-needed", "/decision-approvals", "/connectors"]);
   const placeholders = (manifest?.nav ?? []).filter((n) => !built.has(n.path));
   return (
     <Routes>
@@ -52,6 +52,7 @@ function ScreenRoutes() {
       <Route path="/runs/:runId/reconciliation" element={<ReconciliationRoute />} />
       <Route path="/evidence-readiness" element={<ReadinessRoute />} />
       <Route path="/ai-runtime" element={<AIRuntimeScreen />} />
+      <Route path="/connectors" element={<ConnectorsScreen />} />
       <Route path="/runs/:runId/readiness" element={<ReadinessRoute />} />
       <Route path="/runs/:runId/scoring" element={<ScoringRoute />} />
       <Route path="/runs/:runId/review" element={<ReviewRoute />} />

@@ -112,8 +112,8 @@ class SourceType(StrEnum):
     EXCEL_UPLOAD = "EXCEL_UPLOAD"
 
 
-# Source types that can be used now. Live connectors arrive in BUILD_PLAN step 14.
-AVAILABLE_SOURCE_TYPES = frozenset({SourceType.EXCEL_UPLOAD})
+# Source types that can be used now (Excel uploads and approved live connectors, step 15).
+AVAILABLE_SOURCE_TYPES = frozenset({SourceType.EXCEL_UPLOAD, SourceType.API_CONNECTOR})
 
 
 class UploadStatus(StrEnum):

@@ -23,4 +23,5 @@ export { EvidenceRequestsScreen } from "./screens/EvidenceRequestsScreen";
 export { EvidenceRequestScreen } from "./screens/EvidenceRequestScreen";
 export { DecisionScreen } from "./screens/DecisionScreen";
 export { ApprovalScreen, ApprovalsScreen } from "./screens/ApprovalScreen";
+export { ConnectorsScreen } from "./screens/ConnectorsScreen";
 export { PlaceholderScreen } from "./screens/PlaceholderScreen";

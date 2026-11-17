@@ -121,8 +121,8 @@ field specification were supplied; revised again the same day after the 5 candid
 - Policy-based approval routing; Approve / Reject / Return / Hold (comment required) (screen 10).
 - End-to-end test of CAND-1042 before and after evidence acceptance.
 
-## Step 15: Live connectors · TODO
+## Step 15: Live connectors · DONE
 - Salesforce adapter (catalog, price books, Revenue Cloud/CPQ) with OAuth; reconciliation with Excel data.
 
-## Step 16: Handover package · TODO
+## Step 16: Handover package · DONE
 - Docker images, integration guide, OpenAPI spec, manifest, seed demo data, test report.

@@ -30,6 +30,7 @@ from app.api import (
     runs,
     evidence_requests,
     decisions,
+    connectors,
 )
 from app.config import Settings, get_settings
 from app.db.session import make_sessionmaker
@@ -93,6 +94,7 @@ def create_app(
     app.include_router(candidates.router, prefix=API_PREFIX)
     app.include_router(evidence_requests.router, prefix=API_PREFIX)
     app.include_router(decisions.router, prefix=API_PREFIX)
+    app.include_router(connectors.router, prefix=API_PREFIX)
 
     @app.exception_handler(ServiceError)
     def _service_error(_: Request, exc: ServiceError) -> JSONResponse:

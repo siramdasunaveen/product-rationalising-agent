@@ -992,3 +992,38 @@ class ApprovalAction(IdMixin, TenantMixin, CreatedAtMixin, Base):
     policy_result: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     resulting_state: Mapped[str] = mapped_column(String(16), nullable=False)
+
+
+class Connector(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """An approved live source system (step 15). The OAuth client secret is Fernet-encrypted; never returned."""
+
+    __tablename__ = "connector"
+    __table_args__ = (UniqueConstraint("tenant_id", "key", name="uq_connector_tenant_key"),)
+
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    key: Mapped[str] = mapped_column(String(40), nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    system: Mapped[str] = mapped_column(String(40), nullable=False)  # SALESFORCE
+    config: Mapped[dict] = mapped_column(JSONB, nullable=False)  # instanceUrl, apiVersion, authType, queries
+    client_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    secret_ciphertext: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="ACTIVE")  # ACTIVE | DISABLED
+    last_check: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    created_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    updated_by: Mapped[str] = mapped_column(String(128), nullable=False)
+
+
+class ConnectorPull(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """One extraction from a connector into a run's domain (lineage from the live system to the upload)."""
+
+    __tablename__ = "connector_pull"
+
+    connector_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.connector.id"), nullable=False)
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.run.id"), nullable=False)
+    domain: Mapped[str] = mapped_column(String(40), nullable=False)
+    upload_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)  # SUCCEEDED | FAILED
+    rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    soql: Mapped[str] = mapped_column(Text, nullable=False)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    requested_by: Mapped[str] = mapped_column(String(128), nullable=False)

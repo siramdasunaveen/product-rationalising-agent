@@ -109,6 +109,15 @@ There is no sign-up page. After 5 wrong passwords, an account is locked for 15 m
 sign-in attempt is audited. The page always says "Invalid email or password", so it never reveals
 whether an email exists. In AI Studio, the studio's sign-in replaces this page and endpoint.
 
+## Handover package
+
+- `docs/INTEGRATION_GUIDE.md` — what AI Studio must implement (ports), auth contract, events, configuration.
+- `docs/DEPLOYMENT.md` — images (`backend/Dockerfile`, `frontend/Dockerfile`), `docker compose --profile app`, production checklist.
+- `docs/SECURITY.md` — controls in the code, platform requirements, known gaps.
+- `docs/openapi.json` — the API contract (`backend\scripts\export_openapi.py` regenerates it).
+- `docs/TEST_REPORT.md` — last full run (`backend\scripts\test_report.py` regenerates it).
+- `manifest.json` — agent registration; `docs/samples/` + `backend/scripts/demo_readiness.py` — demo data.
+
 ## Tests
 
 ```powershell
@@ -229,6 +238,14 @@ impact. On **Decision Approvals** each approver acts on the exact version and ha
 Reject with a comment; self-approval can be disabled; policy checks are re-evaluated on every view and nothing
 BLOCKED can be approved. The decision is APPROVED when every scope approved; it changes no product. A reassessment
 that materially changes the picture supersedes the version so a new one is taken.
+
+## Live connectors
+
+Agent Admins register approved source systems under **Connectors** (Salesforce first: instance URL and an OAuth
+client-credentials connected app; the secret is stored encrypted and never shown). In the Evidence Hub a Data Steward
+can *Pull now* for a domain: the catalogue, price book or CPQ records are read through SOQL, written into the
+governed template columns and enter the same intake as an Excel file (checks, discovery, mapping, validation,
+reconciliation by the precedence policy, snapshot). Pulls are recorded as lineage; failures are safe and visible.
 
 ## AI
 

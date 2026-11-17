@@ -16,6 +16,7 @@ import {
   type UploadSummary,
 } from "../api/evidence";
 import { usePermissions } from "../api/identity";
+import { useConnectors, usePullDomain } from "../api/connectors";
 import { useReconciliation, type ReconOverview } from "../api/reconciliation";
 import { GuidanceCards } from "../components/GuidanceCards";
 import { WizardSteps } from "../components/WizardSteps";
@@ -308,6 +309,11 @@ function ExcelPanel({
 }) {
   const upload = useUploadFile(runId);
   const addSource = useAddSource(runId);
+  const pull = usePullDomain(runId);
+  const connectors = useConnectors(canUpload);
+  const [connectorId, setConnectorId] = useState<string>("");
+  const [pulled, setPulled] = useState<string | null>(null);
+  const pullable = (connectors.data ?? []).filter((c) => c.status === "ACTIVE" && c.secretSet && c.domains.includes(domain.key));
   const [sourceId, setSourceId] = useState<string | null>(domain.sources[0]?.id ?? null);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
@@ -415,6 +421,25 @@ function ExcelPanel({
           <input ref={input} type="file" hidden
             accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             onChange={(e) => send(e.target.files?.[0])} />
+        </div>
+      )}
+      {canUpload && pullable.length > 0 && (
+        <div className="pra-pull" aria-label="Pull from a live connector">
+          <span className="pra-field__label">Live connector</span>
+          <select className="pra-input" value={connectorId || pullable[0].id} onChange={(e) => setConnectorId(e.target.value)}
+            aria-label="Connector">
+            {pullable.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.system}</option>)}
+          </select>
+          <button type="button" className="pra-button pra-button--ghost" disabled={pull.isPending}
+            onClick={async () => {
+              setError(null); setPulled(null);
+              try {
+                const r = await pull.mutateAsync({ domain: domain.key, connectorId: connectorId || pullable[0].id });
+                setPulled(`Pulled ${r.rows} rows into ${r.upload.filename} (${r.upload.status.toLowerCase()}).`);
+                setChosen(r.upload.id);
+              } catch (e) { setError([e instanceof ApiError ? e.message : "The connector could not be read."]); }
+            }}>{pull.isPending ? "Pulling…" : "Pull now"}</button>
+          {pulled && <span className="pra-muted">{pulled}</span>}
         </div>
       )}
       {error && (
