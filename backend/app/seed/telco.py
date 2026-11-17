@@ -484,3 +484,111 @@ TELCO_PRECEDENCE = {
         "BillingDependency.legacyBillingCode", "ProvisioningWorkflow.targetCompatibility",
     ],
 }
+
+# ---------------------------------------------------------------------------
+# Evidence readiness (Step 7, screen 11): importance of each domain (spec "Evidence policy matrix"), how its
+# coverage of the run's products is measured, consequence/action text per status, assessments and the domains
+# each disposition needs AVAILABLE (CLAUDE.md rule 6). Placeholders: {coverage} {covered} {total} {missing}.
+# ---------------------------------------------------------------------------
+
+READINESS_KEY = "TELCO-READINESS"
+
+
+def _texts(missing: str, action: str) -> dict:
+    return {
+        "AVAILABLE": {"consequence": "None: {covered} of {total} products covered.",
+                      "action": "No action needed."},
+        "PARTIAL": {"consequence": missing + " for {missing} of {total} products.",
+                    "action": action + " for the {missing} products not covered."},
+        "NOT_ASSESSED": {"consequence": missing + ".", "action": action + "."},
+        "BLOCKED": {"consequence": "Evidence is older than the freshness limit: " + missing[0].lower() + missing[1:]
+                                   + " until it is refreshed.",
+                    "action": "Upload a current export, re-apply the mapping and approve a new snapshot."},
+    }
+
+
+def _readiness_domain(domain: str, importance: str, label: str, measures: list[dict], missing: str,
+                      action: str) -> dict:
+    return {"domain": domain, "importance": importance, "importanceLabel": label, "measures": measures,
+            "text": _texts(missing, action)}
+
+
+def _refs(entity: str) -> dict:
+    return {"type": "RECORD_REFERENCING", "entity": entity, "field": "productId"}
+
+
+TELCO_READINESS = {
+    "description": "Evidence policy matrix: how complete each evidence domain is, what is limited or blocked when "
+                   "it is missing, and which domains each disposition needs.",
+    "canonicalSchema": CANONICAL_KEY,
+    "subject": {"entity": "Product"},
+    "thresholds": {"available": 80},
+    "weights": {"CRITICAL": 3, "HIGH": 2, "MEDIUM": 1, "LOW": 1},
+    "staleBlocks": ["CRITICAL"],
+    "domains": [
+        _readiness_domain("CRM_CATALOG", "CRITICAL", "Critical",
+                          [{"type": "SUBJECT_FIELDS", "fields": ["productName", "productFamily", "status"]}],
+                          "Commercial product identity cannot be established; assessment blocked",
+                          "Upload the CRM product/offer catalog with name, family and status"),
+        _readiness_domain("CPQ", "HIGH", "High", [_refs("CpqRule")],
+                          "Bundle, option, eligibility and rule overlap incomplete; commercial similarity partial",
+                          "Upload CPQ configuration rules"),
+        _readiness_domain("PRICE_BOOK", "MEDIUM", "Medium", [_refs("PriceBookEntry")],
+                          "Pricing overlap and value comparison unavailable; economics partial",
+                          "Upload price book metadata"),
+        _readiness_domain("LIFECYCLE", "HIGH", "High", [_refs("ProductLifecycle")],
+                          "End-of-sale, grandfathering and sunset cannot be verified; retire restricted",
+                          "Upload the product lifecycle / status export"),
+        _readiness_domain("TECHNICAL_CATALOG", "CRITICAL", "Critical for Telco",
+                          [{"type": "SUBJECT_LINK", "relationship": "DECOMPOSES_TO"}],
+                          "Commercial Product → CFS → RFS mapping cannot be confirmed; technical equivalence "
+                          "not assessed",
+                          "Upload the technical service catalog with product-to-service links"),
+        _readiness_domain("PROVISIONING", "CRITICAL", "Critical for Consolidate/Migrate",
+                          [{"type": "SUBJECT_OR_SERVICE_LINK", "relationship": "PROVISIONED_BY",
+                            "via": "DECOMPOSES_TO"}],
+                          "Activation rules, legacy dependencies and target compatibility unknown; migration "
+                          "readiness blocked",
+                          "Upload provisioning workflows linked to products or services"),
+        _readiness_domain("INVENTORY", "CRITICAL", "Critical for Retire/Migrate",
+                          [{"type": "SERVICE_RECORD", "entity": "InventoryAggregate", "field": "serviceSpecId",
+                            "via": "DECOMPOSES_TO"}],
+                          "Active technical footprint cannot be established; retire/migrate approval blocked",
+                          "Upload service/resource inventory aggregates"),
+        _readiness_domain("ORDER_BILLING_ASSURANCE", "HIGH", "High",
+                          [_refs("OrderAssuranceAggregate"), {"type": "SUBJECT_LINK", "relationship": "BILLED_BY"}],
+                          "Operational burden and billing dependencies partial",
+                          "Upload order, billing and assurance aggregates with billing systems"),
+        _readiness_domain("CUSTOMER_REVENUE_AGGREGATES", "CRITICAL", "Critical for Retire/Migrate",
+                          [_refs("CustomerRevenueAggregate")],
+                          "Customer impact unknown; retire/migrate approval blocked",
+                          "Upload customer and revenue aggregates (groups of 10 or more)"),
+    ],
+    "assessments": [
+        {"key": "COMMERCIAL_DUPLICATES", "label": "Commercial duplicates and overlap",
+         "requires": ["CRM_CATALOG"], "improvedBy": ["CPQ", "PRICE_BOOK"], "whenMissing": "BLOCKED"},
+        {"key": "CONFIGURATION_COMPLEXITY", "label": "Configuration complexity",
+         "requires": ["CPQ"], "whenMissing": "NOT_ASSESSED"},
+        {"key": "TECHNICAL_EQUIVALENCE", "label": "Technical equivalence (CFS/RFS)",
+         "requires": ["TECHNICAL_CATALOG"], "improvedBy": ["PROVISIONING"], "whenMissing": "NOT_ASSESSED"},
+        {"key": "MIGRATION_READINESS", "label": "Migration readiness",
+         "requires": ["PROVISIONING", "INVENTORY"], "improvedBy": ["ORDER_BILLING_ASSURANCE"],
+         "whenMissing": "BLOCKED"},
+        {"key": "RETIRE_MIGRATE_APPROVAL", "label": "Retire / migrate safety",
+         "requires": ["INVENTORY", "CUSTOMER_REVENUE_AGGREGATES"], "improvedBy": ["LIFECYCLE"],
+         "whenMissing": "BLOCKED"},
+        {"key": "OPERATIONAL_BURDEN", "label": "Operational burden",
+         "requires": ["ORDER_BILLING_ASSURANCE"], "improvedBy": ["PROVISIONING"], "whenMissing": "NOT_ASSESSED"},
+        {"key": "ECONOMICS", "label": "Economics and value",
+         "requires": ["PRICE_BOOK"], "improvedBy": ["CUSTOMER_REVENUE_AGGREGATES"], "whenMissing": "NOT_ASSESSED"},
+    ],
+    "dispositions": {
+        "RETAIN": ["CRM_CATALOG"],
+        "SIMPLIFY": ["CRM_CATALOG", "CPQ"],
+        "CONSOLIDATE": ["CRM_CATALOG", "TECHNICAL_CATALOG", "PROVISIONING"],
+        "STANDARDISE": ["CRM_CATALOG", "TECHNICAL_CATALOG", "PROVISIONING"],
+        "MIGRATE": ["CRM_CATALOG", "PROVISIONING", "INVENTORY", "CUSTOMER_REVENUE_AGGREGATES"],
+        "RETIRE": ["CRM_CATALOG", "LIFECYCLE", "INVENTORY", "CUSTOMER_REVENUE_AGGREGATES"],
+        "INVESTIGATE": [],
+    },
+}

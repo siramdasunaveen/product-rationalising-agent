@@ -29,6 +29,7 @@ class ArtifactKind(StrEnum):
     CROSSWALK = "CROSSWALK"
     EVIDENCE_TEMPLATE = "EVIDENCE_TEMPLATE"  # governed Excel template of an evidence domain
     PRECEDENCE_POLICY = "PRECEDENCE_POLICY"  # reconciliation: field precedence, materiality, freshness
+    READINESS_POLICY = "READINESS_POLICY"  # evidence readiness: domain importance, measures, dispositions
 
 
 KIND_LABELS: dict[ArtifactKind, str] = {
@@ -38,6 +39,7 @@ KIND_LABELS: dict[ArtifactKind, str] = {
     ArtifactKind.CROSSWALK: "Crosswalk",
     ArtifactKind.EVIDENCE_TEMPLATE: "Evidence template",
     ArtifactKind.PRECEDENCE_POLICY: "Precedence policy",
+    ArtifactKind.READINESS_POLICY: "Readiness policy",
 }
 
 

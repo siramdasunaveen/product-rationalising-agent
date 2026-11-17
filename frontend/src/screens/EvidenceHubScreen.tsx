@@ -80,6 +80,7 @@ export function EvidenceHubScreen({
   onExit,
   onOpenMapping,
   onOpenReconciliation,
+  onOpenReadiness,
 }: {
   runId: string;
   onBack: () => void;
@@ -87,6 +88,7 @@ export function EvidenceHubScreen({
   onExit: () => void;
   onOpenMapping?: (domain: string, sourceId?: string) => void;
   onOpenReconciliation?: () => void;
+  onOpenReadiness?: () => void;
 }) {
   const { has } = usePermissions();
   const evidence = useEvidence(runId);
@@ -205,6 +207,11 @@ export function EvidenceHubScreen({
           {onOpenReconciliation && (
             <div className="pra-hub__confirm">
               <span className="pra-muted">Combine all sources, settle conflicts and approve the evidence snapshot.</span>
+              {onOpenReadiness && (
+                <button type="button" className="pra-button pra-button--ghost" onClick={onOpenReadiness}>
+                  Evidence readiness
+                </button>
+              )}
               <button type="button" className="pra-button pra-button--primary" onClick={onOpenReconciliation}>
                 Reconcile &amp; approve evidence →
               </button>

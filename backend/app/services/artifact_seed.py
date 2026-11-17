@@ -18,8 +18,10 @@ from app.seed.telco import (
     CANONICAL_KEY,
     LOOKUPS,
     PRECEDENCE_KEY,
+    READINESS_KEY,
     TELCO_CANONICAL,
     TELCO_PRECEDENCE,
+    TELCO_READINESS,
     TEMPLATES,
     TRANSFORMS,
 )
@@ -39,6 +41,7 @@ def seed_items() -> list[tuple[ArtifactKind, str, str, dict]]:
     items += [(ArtifactKind.TRANSFORM, key, name, content) for key, name, content in TRANSFORMS]
     items += [(ArtifactKind.EVIDENCE_TEMPLATE, key, name, content) for key, name, content in TEMPLATES]
     items.append((ArtifactKind.PRECEDENCE_POLICY, PRECEDENCE_KEY, "Telco reconciliation precedence", TELCO_PRECEDENCE))
+    items.append((ArtifactKind.READINESS_POLICY, READINESS_KEY, "Telco evidence readiness", TELCO_READINESS))
     return items
 
 

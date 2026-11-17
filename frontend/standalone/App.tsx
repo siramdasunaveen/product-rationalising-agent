@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Navigate, Route, Routes, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
-  AssessmentsScreen, CreateRunScopeScreen, EvidenceHubScreen, MappingRulesScreen, PlaceholderScreen,
-  ReconciliationScreen, useManifest,
+  AssessmentsScreen, CreateRunScopeScreen, EvidenceHubScreen, EvidenceReadinessScreen, MappingRulesScreen,
+  PlaceholderScreen, ReconciliationScreen, useManifest,
 } from "../src";
 import { tokenStore } from "./auth";
 import { Login } from "./Login";
@@ -38,7 +38,8 @@ export function App() {
 
 function ScreenRoutes() {
   const { data: manifest } = useManifest();
-  const placeholders = (manifest?.nav ?? []).filter((n) => n.path !== "/");
+  const built = new Set(["/", "/evidence-readiness"]);
+  const placeholders = (manifest?.nav ?? []).filter((n) => !built.has(n.path));
   return (
     <Routes>
       <Route path="/" element={<AssessmentsRoute />} />
@@ -47,6 +48,8 @@ function ScreenRoutes() {
       <Route path="/runs/:runId/evidence" element={<EvidenceRoute />} />
       <Route path="/runs/:runId/evidence/:domain/mapping" element={<MappingRoute />} />
       <Route path="/runs/:runId/reconciliation" element={<ReconciliationRoute />} />
+      <Route path="/evidence-readiness" element={<ReadinessRoute />} />
+      <Route path="/runs/:runId/readiness" element={<ReadinessRoute />} />
       <Route
         path="/runs/:runId/scoring"
         element={<PlaceholderScreen title="Scoring & AI Route" note="Wizard step 3 arrives in build step 9." />}
@@ -105,6 +108,7 @@ function EvidenceRoute() {
       onOpenMapping={(domain, sourceId) =>
         navigate(`/runs/${runId}/evidence/${domain}/mapping${sourceId ? `?source=${sourceId}` : ""}`)}
       onOpenReconciliation={() => navigate(`/runs/${runId}/reconciliation`)}
+      onOpenReadiness={() => navigate(`/runs/${runId}/readiness`)}
     />
   );
 }
@@ -123,5 +127,19 @@ function MappingRoute() {
 function ReconciliationRoute() {
   const { runId } = useParams();
   const navigate = useNavigate();
-  return <ReconciliationScreen key={runId} runId={runId!} onBack={() => navigate(`/runs/${runId}/evidence`)} />;
+  return (
+    <ReconciliationScreen key={runId} runId={runId!} onBack={() => navigate(`/runs/${runId}/evidence`)}
+      onOpenReadiness={() => navigate(`/runs/${runId}/readiness`)} />
+  );
+}
+
+function ReadinessRoute() {
+  const { runId } = useParams();
+  const navigate = useNavigate();
+  return (
+    <EvidenceReadinessScreen key={runId ?? "none"} runId={runId}
+      onSelectRun={(id) => navigate(`/runs/${id}/readiness`)}
+      onOpenEvidence={(id) => navigate(`/runs/${id}/evidence`)}
+      onOpenReconciliation={(id) => navigate(`/runs/${id}/reconciliation`)} />
+  );
 }

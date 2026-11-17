@@ -35,7 +35,9 @@ const entries = (o: Record<string, number> | undefined) =>
   Object.entries(o ?? {}).map(([k, n]) => `${k} ${n}`).join(" · ") || "none";
 
 /** Step 6: reconcile every source's staged records, settle conflicts, approve an immutable evidence snapshot. */
-export function ReconciliationScreen({ runId, onBack }: { runId: string; onBack: () => void }) {
+export function ReconciliationScreen({ runId, onBack, onOpenReadiness }: {
+  runId: string; onBack: () => void; onOpenReadiness?: () => void;
+}) {
   const { has } = usePermissions();
   const ov = useReconciliation(runId);
   const reconcile = useReconcile(runId);
@@ -71,7 +73,14 @@ export function ReconciliationScreen({ runId, onBack }: { runId: string; onBack:
             approved evidence snapshot. Similar names are only suggestions; nothing is merged automatically.
           </p>
         </div>
-        <button type="button" className="pra-button pra-button--ghost" onClick={onBack}>Back to Evidence Hub</button>
+        <div className="pra-ready__actions">
+          {onOpenReadiness && (
+            <button type="button" className="pra-button pra-button--ghost" onClick={onOpenReadiness}>
+              Evidence readiness →
+            </button>
+          )}
+          <button type="button" className="pra-button pra-button--ghost" onClick={onBack}>Back to Evidence Hub</button>
+        </div>
       </div>
       {error && <div className="pra-alert" role="alert">{error}</div>}
       {note && <div className="pra-notice" role="status">{note}</div>}

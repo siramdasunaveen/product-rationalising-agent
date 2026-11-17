@@ -128,6 +128,17 @@
 | Suggestions and data quality | Suggestions only check that a column's type fits a field; value problems (minimum, group size, pattern, length) are left to validation so they are reported, not hidden | Adopted |
 | Template columns feeding several fields | Template columns may list `alsoTargets` (e.g. Product ID feeds the aggregate and the billing dependency); the mapping grid shows the extra rules below the grid | Adopted |
 
+## Step 7: evidence readiness (developer OK'd and built 17 Nov 2026)
+| Topic | Decision | Status |
+|---|---|---|
+| Subjects | Coverage is measured over every Product in the snapshot. Filtering by the run's product families comes with candidate analysis (Step 10) | Adopted |
+| Thresholds | AVAILABLE at 80% coverage or more; PARTIAL from 1% to 79%; NOT_ASSESSED (shown as "Missing") at 0%. Coverage is rounded down | Adopted |
+| BLOCKED | Only when every source of a CRITICAL domain is older than its freshness limit. Stale evidence in other domains and deferred (conflicted) facts are shown as flags only | Adopted |
+| Overall completeness | Weighted average coverage of the selected domains: CRITICAL 3, HIGH 2, MEDIUM 1, LOW 1. Stale and conflicted flags do not reduce it | Adopted |
+| Importance | From the spec's evidence policy matrix: CRM, technical catalog, provisioning, inventory and customer/revenue aggregates are critical; CPQ, lifecycle and order/billing/assurance are high; price book is medium. Order/billing missing: "operational burden and billing dependencies partial". Customer/revenue missing: "customer impact unknown; retire/migrate approval blocked" | Adopted |
+| Dispositions (rule 6) | Domains that must be AVAILABLE: RETAIN CRM; SIMPLIFY CRM + CPQ; CONSOLIDATE and STANDARDISE CRM + technical catalog + provisioning; MIGRATE CRM + provisioning + inventory + customer/revenue; RETIRE CRM + lifecycle + inventory + customer/revenue; INVESTIGATE none. Domains not selected for the run count as not assessed | Adopted |
+| Readiness policy | Versioned registry artifact TELCO-READINESS (kind READINESS_POLICY): importance, coverage measures, consequence and action text per status, assessments, dispositions. Calculated from the current approved snapshot; a preview of the latest reconciliation is shown but never used for decisions | Adopted |
+
 ## Proposed defaults (AI Studio contract not decided yet; confirm with the colleague)
 | Topic | Default | Status |
 |---|---|---|

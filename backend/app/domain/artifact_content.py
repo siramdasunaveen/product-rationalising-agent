@@ -545,6 +545,12 @@ def check_precedence_policy_against(content: dict, canonical: dict) -> list[Fiel
 # Entry point
 # ---------------------------------------------------------------------------
 
+from app.domain.readiness import (  # noqa: E402
+    READINESS_POLICY_JSON,
+    check_readiness_policy,
+    check_readiness_policy_against,
+)
+
 _SCHEMAS: dict[ArtifactKind, dict] = {
     ArtifactKind.CANONICAL_SCHEMA: CANONICAL_SCHEMA_JSON,
     ArtifactKind.LOOKUP: LOOKUP_SCHEMA_JSON,
@@ -552,6 +558,7 @@ _SCHEMAS: dict[ArtifactKind, dict] = {
     ArtifactKind.CROSSWALK: CROSSWALK_SCHEMA_JSON,
     ArtifactKind.EVIDENCE_TEMPLATE: EVIDENCE_TEMPLATE_JSON,
     ArtifactKind.PRECEDENCE_POLICY: PRECEDENCE_POLICY_JSON,
+    ArtifactKind.READINESS_POLICY: READINESS_POLICY_JSON,
 }
 _VALIDATORS = {k: Draft202012Validator(v) for k, v in _SCHEMAS.items()}
 _CHECKS: dict[ArtifactKind, Callable[[dict], list[FieldError]]] = {
@@ -561,13 +568,16 @@ _CHECKS: dict[ArtifactKind, Callable[[dict], list[FieldError]]] = {
     ArtifactKind.CROSSWALK: check_crosswalk,
     ArtifactKind.EVIDENCE_TEMPLATE: check_evidence_template,
     ArtifactKind.PRECEDENCE_POLICY: check_precedence_policy,
+    ArtifactKind.READINESS_POLICY: check_readiness_policy,
 }
 _CROSS_CHECKS: dict[ArtifactKind, Callable[[dict, dict], list[FieldError]]] = {
     ArtifactKind.LOOKUP: check_lookup_against,
     ArtifactKind.CROSSWALK: check_crosswalk_against,
     ArtifactKind.EVIDENCE_TEMPLATE: check_evidence_template_against,
     ArtifactKind.PRECEDENCE_POLICY: check_precedence_policy_against,
+    ArtifactKind.READINESS_POLICY: check_readiness_policy_against,
 }
+_POLICY_KINDS = (ArtifactKind.EVIDENCE_TEMPLATE, ArtifactKind.PRECEDENCE_POLICY, ArtifactKind.READINESS_POLICY)
 
 MAX_STRUCTURE_ERRORS = 50
 
@@ -592,7 +602,7 @@ def canonical_schema_key(kind: ArtifactKind | str, content: Any) -> str | None:
     """The canonical schema a lookup or crosswalk points to (None for other kinds or bad content)."""
     if ArtifactKind(kind) not in _CROSS_CHECKS or not isinstance(content, dict):
         return None
-    if ArtifactKind(kind) in (ArtifactKind.EVIDENCE_TEMPLATE, ArtifactKind.PRECEDENCE_POLICY):
+    if ArtifactKind(kind) in _POLICY_KINDS:
         key = content.get("canonicalSchema")
         return key if isinstance(key, str) else None
     target = content.get("target")
@@ -614,8 +624,7 @@ def validate_content(kind: ArtifactKind | str, content: Any, *,
     if kind in _CROSS_CHECKS:
         if canonical is None:
             key = canonical_schema_key(kind, content)
-            path = "canonicalSchema" if kind in (ArtifactKind.EVIDENCE_TEMPLATE, ArtifactKind.PRECEDENCE_POLICY) \
-                else "target.schema"
+            path = "canonicalSchema" if kind in _POLICY_KINDS else "target.schema"
             errors.append(FieldError(path, f"No published canonical schema {key}"))
         else:
             errors += _CROSS_CHECKS[kind](content, canonical)

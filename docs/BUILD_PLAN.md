@@ -60,7 +60,7 @@ field specification were supplied; revised again the same day after the 5 candid
 - Immutable snapshot with Evidence IDs (EV-*) per fact; Data Steward approves (blockers = 0).
 - Done when: two sources for the same product reconcile with visible lineage and a conflict queue; approval audited.
 
-## Step 7: Evidence readiness · TODO
+## Step 7: Evidence readiness · DONE
 - Versioned policy matrix per domain (importance, missing treatment, consequence); completeness per domain and
   per candidate/disposition; AVAILABLE / PARTIAL / NOT_ASSESSED / BLOCKED (+ stale/conflicted flags).
 - Screen: Evidence Readiness (screen 11).

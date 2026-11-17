@@ -175,6 +175,15 @@ evidence ID (EV-…) and full provenance back to the source file, sheet and row.
 billing systems, offers, services and aggregates. A domain can have several sources (e.g. two CRM exports); add one
 in the Excel panel and give each sheet a "data as of" date when confirming it.
 
+## Evidence readiness
+
+**Evidence Readiness** (top navigation, or the buttons on the Evidence Hub and Reconcile screens) shows, for a run,
+how complete each evidence domain is in the approved snapshot: status (Available, Partial, Missing, Blocked), the
+share of products covered, what cannot be assessed because of it and what to upload. Below that are the
+assessments the evidence allows and the dispositions a decision could use (a decision needs every domain the
+policy marks for it to be Available). Switch to **Preview latest reconciliation** to see the effect of new data
+before approving it. The rules live in the registry as TELCO-READINESS (readiness policies).
+
 ## AI
 
 `PRA_AI_PROVIDER=none` (default) runs in no-LLM mode: every AI task uses its deterministic fallback.

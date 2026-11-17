@@ -12,4 +12,5 @@ export { CreateRunScopeScreen } from "./screens/CreateRunScopeScreen";
 export { EvidenceHubScreen } from "./screens/EvidenceHubScreen";
 export { MappingRulesScreen } from "./screens/MappingRulesScreen";
 export { ReconciliationScreen } from "./screens/ReconciliationScreen";
+export { EvidenceReadinessScreen } from "./screens/EvidenceReadinessScreen";
 export { PlaceholderScreen } from "./screens/PlaceholderScreen";
