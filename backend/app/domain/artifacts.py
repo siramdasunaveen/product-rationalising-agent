@@ -35,6 +35,14 @@ class ArtifactKind(StrEnum):
 
     AI_RUNTIME_PROFILE = "AI_RUNTIME_PROFILE"  # AI strategy, routing policy, task routes, constraints
 
+    DETECTOR_PACK = "DETECTOR_PACK"  # detectors, factor weights, thresholds, precedence, grouping
+
+    SCORING_PROFILE = "SCORING_PROFILE"  # Opportunity Score weights and thresholds
+
+    PRIORITY_POLICY = "PRIORITY_POLICY"  # priority index weights, bands, overrides
+
+    POLICY_PACK = "POLICY_PACK"  # gates, guardrails, overridable settings, approval routes
+
 
 KIND_LABELS: dict[ArtifactKind, str] = {
     ArtifactKind.CANONICAL_SCHEMA: "Canonical schema",
@@ -46,6 +54,10 @@ KIND_LABELS: dict[ArtifactKind, str] = {
     ArtifactKind.READINESS_POLICY: "Readiness policy",
     ArtifactKind.AI_DEPLOYMENT: "AI deployment",
     ArtifactKind.AI_RUNTIME_PROFILE: "AI runtime profile",
+    ArtifactKind.DETECTOR_PACK: "Detector pack",
+    ArtifactKind.SCORING_PROFILE: "Scoring profile",
+    ArtifactKind.PRIORITY_POLICY: "Priority policy",
+    ArtifactKind.POLICY_PACK: "Policy pack",
 }
 
 

@@ -48,6 +48,10 @@ class RegistryKind(StrEnum):
     READINESS_POLICIES = "readiness-policies"
     AI_DEPLOYMENTS = "ai-deployments"
     AI_RUNTIME_PROFILES = "ai-runtime-profiles"
+    DETECTOR_PACKS = "detector-packs"
+    SCORING_PROFILES = "scoring-profiles"
+    PRIORITY_POLICIES = "priority-policies"
+    POLICY_PACKS = "policy-packs"
 
 
 KINDS = {
@@ -60,6 +64,10 @@ KINDS = {
     RegistryKind.READINESS_POLICIES: ArtifactKind.READINESS_POLICY,
     RegistryKind.AI_DEPLOYMENTS: ArtifactKind.AI_DEPLOYMENT,
     RegistryKind.AI_RUNTIME_PROFILES: ArtifactKind.AI_RUNTIME_PROFILE,
+    RegistryKind.DETECTOR_PACKS: ArtifactKind.DETECTOR_PACK,
+    RegistryKind.SCORING_PROFILES: ArtifactKind.SCORING_PROFILE,
+    RegistryKind.PRIORITY_POLICIES: ArtifactKind.PRIORITY_POLICY,
+    RegistryKind.POLICY_PACKS: ArtifactKind.POLICY_PACK,
 }
 
 Reader = Annotated[Principal, Depends(require_permission(Permission.REGISTRY_READ))]

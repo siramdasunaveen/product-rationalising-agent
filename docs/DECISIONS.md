@@ -153,6 +153,19 @@
 | Audit | Every AI call is logged append-only (`ai_invocation`): task, profile and deployment refs, model, attempts, errors, request and output hashes. Runs pin the profile and per-task deployment refs (used by the Run Manifest, Step 9) | Proposed |
 | Permissions | AI Runtime tab and changes need `config.ai` (Agent Admin); others with registry read may view the configuration via the API | Proposed |
 
+## Step 9: scoring configuration and Run Manifest (built 17 Nov 2026 in continuous mode; developer to review)
+| Topic | Decision | Status |
+|---|---|---|
+| Registries | Four new kinds: DETECTOR_PACK (TELCO-RATIONALISATION-DETECTORS), SCORING_PROFILE (TELCO-PORTFOLIO-SCORING), PRIORITY_POLICY (TELCO-PRIORITY), POLICY_PACK (UK-CONSUMER-PORTFOLIO and the global TELCO-DEFAULT-POLICY). Seeds start at 1.0 (the spec's @4.2 / @2.1 / @3.2 are example numbers) | Proposed |
+| Grouping policy | Folded into the detector pack (`grouping.scope`), so the candidate group key uses the pinned detector pack version | Proposed |
+| Numbers in registries | Weights are integer percentages that total 100; detector thresholds are per mille (900 = 0.90), because registry content is hashed as canonical JSON without floats | Proposed |
+| Applicability | Every pack declares markets (or GLOBAL), product families (or ALL), objectives, dimensions, canonical schema and a priority. Recommendation: eligible packs ranked by objective coverage, specificity (market, then family), priority, version; a tie is shown and the user chooses | Proposed |
+| Precedence | Authorised run override, then policy pack, then scoring profile, then Telco default; each value shows its source | Proposed |
+| Who may change what | Portfolio Manager (`run.create`) chooses packs; overriding a threshold needs `config.scoring` and the policy pack must list the setting as overridable. Human review and missing-evidence treatment are not overridable in the seeded policies; ASSUME_ZERO is not a valid value anywhere | Proposed |
+| Compatibility | BLOCKING: no/ineligible pack, recommended ≤ review, human review off against policy, no approved snapshot, an AI route with no eligible model. WARNING (acknowledge before Start): selected evidence domains that are not Available, packs not covering all objectives. INFO: templates-only AI | Proposed |
+| Start | Needs `run.start`, zero blocking issues and every warning acknowledged (actor and time stored). Freezes an immutable Run Manifest (exact refs and digests of detector, scoring, priority, policy, readiness, precedence and canonical artifacts; snapshot code and hash; resolved settings with source; AI profile and per-task routes; recommendation trace; acknowledgements) and sets the run to ANALYSING; events RunStarted and AnalysisRequested | Proposed |
+| Approval routing | Lives in the policy pack: RETAIN/INVESTIGATE need product; SIMPLIFY product + commercial; CONSOLIDATE/STANDARDISE/MIGRATE/RETIRE product + commercial + architecture; self-approval off | Proposed |
+
 ## Proposed defaults (AI Studio contract not decided yet; confirm with the colleague)
 | Topic | Default | Status |
 |---|---|---|

@@ -14,4 +14,6 @@ export { MappingRulesScreen } from "./screens/MappingRulesScreen";
 export { ReconciliationScreen } from "./screens/ReconciliationScreen";
 export { EvidenceReadinessScreen } from "./screens/EvidenceReadinessScreen";
 export { AIRuntimeScreen } from "./screens/AIRuntimeScreen";
+export { ScoringRouteScreen } from "./screens/ScoringRouteScreen";
+export { ReviewStartScreen } from "./screens/ReviewStartScreen";
 export { PlaceholderScreen } from "./screens/PlaceholderScreen";

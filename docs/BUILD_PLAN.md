@@ -71,7 +71,7 @@ field specification were supplied; revised again the same day after the 5 candid
   deterministic template); governance checks. Anthropic becomes one provider adapter behind a deployment.
 - Screen: AI Configuration (screen 16).
 
-## Step 9: Scoring & AI Route, Review & Start, Run Manifest · TODO
+## Step 9: Scoring & AI Route, Review & Start, Run Manifest · DONE
 - Registries (published, versioned, on the Step 3 pattern): Detector Pack (5 detectors, factor weights,
   thresholds, precedence), Scoring Profile (Opportunity Score weights), Priority Policy (index weights, bands,
   overrides), Policy Pack (gates, guardrails, decision-readiness rules, blocker rules), grouping policy.

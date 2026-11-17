@@ -143,6 +143,10 @@ class Run(IdMixin, TenantMixin, CreatedAtMixin, Base):
     # Evidence domains confirmed for this run (screen 03). NULL = not confirmed yet: the proposal from
     # the objectives applies (app.domain.evidence.propose_domains).
     evidence_domains: Mapped[list[str] | None] = mapped_column(ARRAY(String(40)), nullable=True)
+    # Scoring & AI Route draft (screen 04): selected pack refs, run overrides, acknowledged warnings.
+    configuration: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    started_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
 
 # ---------------------------------------------------------------------------
@@ -676,3 +680,16 @@ class AIInvocation(IdMixin, TenantMixin, CreatedAtMixin, Base):
     request_hash: Mapped[str] = mapped_column(String(71), nullable=False)
     output_hash: Mapped[str] = mapped_column(String(71), nullable=False)
     actor_id: Mapped[str] = mapped_column(String(128), nullable=False)
+
+
+class RunManifest(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """What a run is pinned to when it starts (screen 05): exact artifact refs + digests, the approved snapshot,
+    resolved thresholds and treatments with their source, AI routes, acknowledged limitations. Immutable."""
+
+    __tablename__ = "run_manifest"
+    __table_args__ = (UniqueConstraint("run_id", name="uq_run_manifest_run"),)
+
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.run.id"), nullable=False)
+    manifest: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    manifest_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    created_by: Mapped[str] = mapped_column(String(128), nullable=False)

@@ -184,6 +184,14 @@ assessments the evidence allows and the dispositions a decision could use (a dec
 policy marks for it to be Available). Switch to **Preview latest reconciliation** to see the effect of new data
 before approving it. The rules live in the registry as TELCO-READINESS (readiness policies).
 
+## Scoring, Review & Start
+
+Wizard step 3 (**Scoring**) recommends a detector pack, scoring profile, priority policy and policy pack for the run's
+markets, families and objectives (with a "why" trace), shows every threshold with where it comes from, and checks
+compatibility. Step 4 (**Review**) summarises scope, evidence, scoring, AI route and governance; evidence limitations
+must be acknowledged, then **Start analysis** pins everything in an immutable Run Manifest
+(`GET /runs/{id}/manifest`). Publishing newer packs later never changes a started run.
+
 ## AI
 
 Every AI task goes through the **AI Runtime** (tab visible to Agent Admins). Approved models and endpoints are

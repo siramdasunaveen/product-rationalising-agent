@@ -555,6 +555,14 @@ from app.domain.ai_runtime import AI_DEPLOYMENT_JSON, check_ai_deployment  # noq
 
 from app.domain.ai_runtime import AI_RUNTIME_PROFILE_JSON, check_ai_runtime_profile  # noqa: E402
 
+from app.domain.configuration import DETECTOR_PACK_JSON, check_detector_pack  # noqa: E402
+
+from app.domain.configuration import SCORING_PROFILE_JSON, check_scoring_profile  # noqa: E402
+
+from app.domain.configuration import PRIORITY_POLICY_JSON, check_priority_policy  # noqa: E402
+
+from app.domain.configuration import POLICY_PACK_JSON, check_policy_pack  # noqa: E402
+
 _SCHEMAS: dict[ArtifactKind, dict] = {
     ArtifactKind.CANONICAL_SCHEMA: CANONICAL_SCHEMA_JSON,
     ArtifactKind.LOOKUP: LOOKUP_SCHEMA_JSON,
@@ -565,6 +573,10 @@ _SCHEMAS: dict[ArtifactKind, dict] = {
     ArtifactKind.READINESS_POLICY: READINESS_POLICY_JSON,
     ArtifactKind.AI_DEPLOYMENT: AI_DEPLOYMENT_JSON,
     ArtifactKind.AI_RUNTIME_PROFILE: AI_RUNTIME_PROFILE_JSON,
+    ArtifactKind.DETECTOR_PACK: DETECTOR_PACK_JSON,
+    ArtifactKind.SCORING_PROFILE: SCORING_PROFILE_JSON,
+    ArtifactKind.PRIORITY_POLICY: PRIORITY_POLICY_JSON,
+    ArtifactKind.POLICY_PACK: POLICY_PACK_JSON,
 }
 _VALIDATORS = {k: Draft202012Validator(v) for k, v in _SCHEMAS.items()}
 _CHECKS: dict[ArtifactKind, Callable[[dict], list[FieldError]]] = {
@@ -577,6 +589,10 @@ _CHECKS: dict[ArtifactKind, Callable[[dict], list[FieldError]]] = {
     ArtifactKind.READINESS_POLICY: check_readiness_policy,
     ArtifactKind.AI_DEPLOYMENT: check_ai_deployment,
     ArtifactKind.AI_RUNTIME_PROFILE: check_ai_runtime_profile,
+    ArtifactKind.DETECTOR_PACK: check_detector_pack,
+    ArtifactKind.SCORING_PROFILE: check_scoring_profile,
+    ArtifactKind.PRIORITY_POLICY: check_priority_policy,
+    ArtifactKind.POLICY_PACK: check_policy_pack,
 }
 _CROSS_CHECKS: dict[ArtifactKind, Callable[[dict, dict], list[FieldError]]] = {
     ArtifactKind.LOOKUP: check_lookup_against,

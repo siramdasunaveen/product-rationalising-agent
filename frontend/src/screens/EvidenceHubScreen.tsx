@@ -152,7 +152,7 @@ export function EvidenceHubScreen({
       </div>
       <div className="pra-progress" aria-hidden="true"><span className="pra-progress__fill" style={{ width: "40%" }} /></div>
 
-      <WizardSteps current={2} available={[1, 2]} onSelect={(s) => s === 1 && onBack()} />
+      <WizardSteps current={2} available={[1, 2, 3]} onSelect={(s) => (s === 1 ? onBack() : s === 3 && onContinue())} />
 
       {!data.editable && (
         <div className="pra-notice" role="status">Evidence is locked because analysis has started.</div>

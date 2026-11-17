@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Navigate, Route, Routes, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   AIRuntimeScreen, AssessmentsScreen, CreateRunScopeScreen, EvidenceHubScreen, EvidenceReadinessScreen, MappingRulesScreen,
-  PlaceholderScreen, ReconciliationScreen, useManifest,
+  PlaceholderScreen, ReconciliationScreen, ReviewStartScreen, ScoringRouteScreen, useManifest,
 } from "../src";
 import { tokenStore } from "./auth";
 import { Login } from "./Login";
@@ -51,9 +51,11 @@ function ScreenRoutes() {
       <Route path="/evidence-readiness" element={<ReadinessRoute />} />
       <Route path="/ai-runtime" element={<AIRuntimeScreen />} />
       <Route path="/runs/:runId/readiness" element={<ReadinessRoute />} />
+      <Route path="/runs/:runId/scoring" element={<ScoringRoute />} />
+      <Route path="/runs/:runId/review" element={<ReviewRoute />} />
       <Route
-        path="/runs/:runId/scoring"
-        element={<PlaceholderScreen title="Scoring & AI Route" note="Wizard step 3 arrives in build step 9." />}
+        path="/runs/:runId/overview"
+        element={<PlaceholderScreen title="Run Overview" note="Analysis results arrive in build step 11." />}
       />
       {placeholders.map((n) => (
         <Route
@@ -142,5 +144,28 @@ function ReadinessRoute() {
       onSelectRun={(id) => navigate(`/runs/${id}/readiness`)}
       onOpenEvidence={(id) => navigate(`/runs/${id}/evidence`)}
       onOpenReconciliation={(id) => navigate(`/runs/${id}/reconciliation`)} />
+  );
+}
+
+function stepPath(runId: string, step: number) {
+  return [`/runs/${runId}/scope`, `/runs/${runId}/evidence`, `/runs/${runId}/scoring`, `/runs/${runId}/review`][step - 1];
+}
+
+function ScoringRoute() {
+  const { runId } = useParams();
+  const navigate = useNavigate();
+  return (
+    <ScoringRouteScreen key={runId} runId={runId!} onBack={() => navigate(`/runs/${runId}/evidence`)}
+      onContinue={() => navigate(`/runs/${runId}/review`)} onOpenAIRuntime={() => navigate("/ai-runtime")}
+      onSelectStep={(s) => stepPath(runId!, s) && navigate(stepPath(runId!, s)!)} />
+  );
+}
+
+function ReviewRoute() {
+  const { runId } = useParams();
+  const navigate = useNavigate();
+  return (
+    <ReviewStartScreen key={runId} runId={runId!} onEdit={(s) => stepPath(runId!, s) && navigate(stepPath(runId!, s)!)}
+      onStarted={() => navigate(`/runs/${runId}/overview`)} onExit={() => navigate("/")} />
   );
 }

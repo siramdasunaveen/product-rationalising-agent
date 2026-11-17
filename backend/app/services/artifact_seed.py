@@ -14,6 +14,7 @@ from app.db.models import Artifact, ArtifactVersion
 from app.domain.artifacts import FIRST_VERSION, ArtifactKind, ArtifactStatus, Bump, format_ref
 from app.ports.audit import AuditLog
 from app.ports.auth import Principal
+from app.seed.configuration import CONFIGURATION_ITEMS
 from app.seed.ai import AI_DEPLOYMENTS, AI_RUNTIME_KEY, TELCO_AI_RUNTIME
 from app.seed.telco import (
     CANONICAL_KEY,
@@ -45,6 +46,7 @@ def seed_items() -> list[tuple[ArtifactKind, str, str, dict]]:
     items.append((ArtifactKind.READINESS_POLICY, READINESS_KEY, "Telco evidence readiness", TELCO_READINESS))
     items += [(ArtifactKind.AI_DEPLOYMENT, key, name, content) for key, name, content in AI_DEPLOYMENTS]
     items.append((ArtifactKind.AI_RUNTIME_PROFILE, AI_RUNTIME_KEY, "Telco AI runtime", TELCO_AI_RUNTIME))
+    items += [(ArtifactKind(kind), key, name, content) for kind, key, name, content in CONFIGURATION_ITEMS]
     return items
 
 
