@@ -31,6 +31,10 @@ class ArtifactKind(StrEnum):
     PRECEDENCE_POLICY = "PRECEDENCE_POLICY"  # reconciliation: field precedence, materiality, freshness
     READINESS_POLICY = "READINESS_POLICY"  # evidence readiness: domain importance, measures, dispositions
 
+    AI_DEPLOYMENT = "AI_DEPLOYMENT"  # approved model or endpoint (provider, region, data policy, capabilities)
+
+    AI_RUNTIME_PROFILE = "AI_RUNTIME_PROFILE"  # AI strategy, routing policy, task routes, constraints
+
 
 KIND_LABELS: dict[ArtifactKind, str] = {
     ArtifactKind.CANONICAL_SCHEMA: "Canonical schema",
@@ -40,6 +44,8 @@ KIND_LABELS: dict[ArtifactKind, str] = {
     ArtifactKind.EVIDENCE_TEMPLATE: "Evidence template",
     ArtifactKind.PRECEDENCE_POLICY: "Precedence policy",
     ArtifactKind.READINESS_POLICY: "Readiness policy",
+    ArtifactKind.AI_DEPLOYMENT: "AI deployment",
+    ArtifactKind.AI_RUNTIME_PROFILE: "AI runtime profile",
 }
 
 

@@ -640,3 +640,39 @@ class SnapshotRelationship(TenantMixin, Base):
     to_entity: Mapped[str] = mapped_column(String(64), nullable=False)
     to_key: Mapped[str] = mapped_column(String(512), nullable=False)
     sources: Mapped[list] = mapped_column(JSONB, nullable=False)
+
+
+# ---------------------------------------------------------------------------
+# AI runtime (step 8)
+# ---------------------------------------------------------------------------
+
+class AISecret(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """Credential of an AI deployment (e.g. an API key), Fernet-encrypted. Never returned by the API."""
+
+    __tablename__ = "ai_secret"
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_ai_secret_tenant_name"),)
+
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    ciphertext: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AIInvocation(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """One governed AI task execution (append-only): which profile/deployment/model answered, or the fallback."""
+
+    __tablename__ = "ai_invocation"
+
+    run_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True, index=True)
+    task: Mapped[str] = mapped_column(String(40), nullable=False)
+    profile_ref: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    deployment_ref: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    model: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    source: Mapped[str] = mapped_column(String(16), nullable=False)  # llm | fallback
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False)
+    chain: Mapped[list] = mapped_column(JSONB, nullable=False)  # deployment refs tried, in order
+    errors: Mapped[list] = mapped_column(JSONB, nullable=False)
+    needs_human_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    request_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    output_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    actor_id: Mapped[str] = mapped_column(String(128), nullable=False)

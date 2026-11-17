@@ -13,7 +13,19 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app import __version__
 from app.adapters.registry import Platform, build_platform
-from app.api import auth, evidence, health, mappings, me, metadata, readiness, reconciliation, registries, runs
+from app.api import (
+    ai_runtime,
+    auth,
+    evidence,
+    health,
+    mappings,
+    me,
+    metadata,
+    readiness,
+    reconciliation,
+    registries,
+    runs,
+)
 from app.config import Settings, get_settings
 from app.db.session import make_sessionmaker
 from app.services.errors import ServiceError
@@ -70,6 +82,7 @@ def create_app(
     app.include_router(mappings.router, prefix=API_PREFIX)
     app.include_router(reconciliation.router, prefix=API_PREFIX)
     app.include_router(readiness.router, prefix=API_PREFIX)
+    app.include_router(ai_runtime.router, prefix=API_PREFIX)
 
     @app.exception_handler(ServiceError)
     def _service_error(_: Request, exc: ServiceError) -> JSONResponse:

@@ -27,6 +27,8 @@ class AITaskResult:
     attempts: int
     model: str | None = None
     errors: list[str] = field(default_factory=list)  # rejection reasons from failed attempts
+    deployment: str | None = None  # registry ref of the deployment that answered (runtime routing)
+    needs_human_review: bool = False  # failure treatment HUMAN_REVIEW and the template was used
 
 
 def schema_errors(schema: dict[str, Any], output: Any) -> list[str]:
@@ -63,25 +65,18 @@ def citations_must_exist(valid_ids: Iterable[str],
     return check
 
 
-def run_ai_task(
-    provider: AIProvider,
-    request: AIRequest,
-    *,
-    fallback: Callable[[], dict[str, Any]],
-    citation_check: CitationCheck | None = None,
-    max_retries: int = 2,
-) -> AITaskResult:
-    errors: list[str] = []
+def _try_provider(provider: AIProvider, request: AIRequest, citation_check: CitationCheck | None,
+                  max_retries: int, errors: list[str]) -> tuple[dict[str, Any] | None, int, str | None]:
+    """Up to 1 + ``max_retries`` attempts on one provider. Returns (accepted output or None, attempts, model)."""
     current = request
     attempts = 0
-
     for _ in range(max_retries + 1):
         attempts += 1
         try:
             raw = provider.complete_json(current)
         except AIUnavailable as exc:
             errors.append(f"unavailable: {exc}")
-            break
+            return None, attempts, None
 
         try:
             output = json.loads(raw.text)
@@ -92,8 +87,7 @@ def run_ai_task(
             if not problems and citation_check is not None:
                 problems = citation_check(output)
             if not problems:
-                return AITaskResult(output=output, source="llm", attempts=attempts,
-                                    model=raw.model, errors=errors)
+                return output, attempts, raw.model
 
         errors.extend(problems)
         log.info("AI task %s attempt %d rejected: %s", request.task, attempts, problems)
@@ -105,9 +99,51 @@ def run_ai_task(
                 + "\nReturn a corrected answer. Cite only ids that appear in the evidence provided."
             ),
         )
+    return None, attempts, None
 
+
+def _fallback_output(request: AIRequest, fallback: Callable[[], dict[str, Any]]) -> dict[str, Any]:
     output = fallback()
     fallback_problems = schema_errors(request.schema, output)
     if fallback_problems:
         raise ValueError(f"Fallback output for task {request.task!r} violates its schema: {fallback_problems}")
-    return AITaskResult(output=output, source="fallback", attempts=attempts, errors=errors)
+    return output
+
+
+def run_ai_chain(
+    providers: list[tuple[str, AIProvider]],
+    request: AIRequest,
+    *,
+    fallback: Callable[[], dict[str, Any]],
+    citation_check: CitationCheck | None = None,
+    max_retries: int = 2,
+) -> AITaskResult:
+    """Try each (label, provider) in order; the first accepted output wins, else the deterministic fallback."""
+    errors: list[str] = []
+    attempts = 0
+    for label, provider in providers:
+        output, n, model = _try_provider(provider, request, citation_check, max_retries, errors)
+        attempts += n
+        if output is not None:
+            return AITaskResult(output=output, source="llm", attempts=attempts, model=model, errors=errors,
+                                deployment=label)
+        errors.append(f"{label}: gave no acceptable answer")
+    return AITaskResult(output=_fallback_output(request, fallback), source="fallback", attempts=attempts,
+                        errors=errors)
+
+
+def run_ai_task(
+    provider: AIProvider,
+    request: AIRequest,
+    *,
+    fallback: Callable[[], dict[str, Any]],
+    citation_check: CitationCheck | None = None,
+    max_retries: int = 2,
+) -> AITaskResult:
+    """One provider with retries, then the deterministic fallback."""
+    errors: list[str] = []
+    output, attempts, model = _try_provider(provider, request, citation_check, max_retries, errors)
+    if output is not None:
+        return AITaskResult(output=output, source="llm", attempts=attempts, model=model, errors=errors)
+    return AITaskResult(output=_fallback_output(request, fallback), source="fallback", attempts=attempts,
+                        errors=errors)

@@ -186,8 +186,13 @@ before approving it. The rules live in the registry as TELCO-READINESS (readines
 
 ## AI
 
-`PRA_AI_PROVIDER=none` (default) runs in no-LLM mode: every AI task uses its deterministic fallback.
-Set `PRA_AI_PROVIDER=anthropic` and `PRA_ANTHROPIC_API_KEY` to use Claude (default model
-`claude-opus-5-5`). Output must match the task's JSON schema, and every cited evidence id must exist.
-Otherwise the output is sent back to the model (max 2 retries), and after that the fallback is used.
-Server-side refusal fallback is enabled on Anthropic calls.
+Every AI task goes through the **AI Runtime** (tab visible to Agent Admins). Approved models and endpoints are
+registry entries (AI deployments); the runtime profile TELCO-AI-RUNTIME picks a strategy (customer registry,
+platform-managed, bring your own endpoint, or no-LLM), a routing policy, and per task a primary and optional
+fallback model. Governance checks (approved, region, data class, structured output, budget) decide which models
+may be used; after at most two models the deterministic template is used. Output must match the task's JSON schema
+and every cited evidence id must exist; otherwise it is sent back (max 2 retries). Every call is logged.
+
+The seeded profile uses the **platform-managed** model: `PRA_AI_PROVIDER=none` (default) means no-LLM, every task
+uses its template. To use Claude either set `PRA_AI_PROVIDER=anthropic` + `PRA_ANTHROPIC_API_KEY`, or choose
+**Customer model registry** on the AI Runtime screen and store the key as secret `anthropic-api-key` there.

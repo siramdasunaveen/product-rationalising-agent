@@ -139,6 +139,20 @@
 | Dispositions (rule 6) | Domains that must be AVAILABLE: RETAIN CRM; SIMPLIFY CRM + CPQ; CONSOLIDATE and STANDARDISE CRM + technical catalog + provisioning; MIGRATE CRM + provisioning + inventory + customer/revenue; RETIRE CRM + lifecycle + inventory + customer/revenue; INVESTIGATE none. Domains not selected for the run count as not assessed | Adopted |
 | Readiness policy | Versioned registry artifact TELCO-READINESS (kind READINESS_POLICY): importance, coverage measures, consequence and action text per status, assessments, dispositions. Calculated from the current approved snapshot; a preview of the latest reconciliation is shown but never used for decisions | Adopted |
 
+## Step 8: AI runtime (built 17 Nov 2026 in continuous mode; developer to review)
+| Topic | Decision | Status |
+|---|---|---|
+| Registry, not code | Approved models and endpoints are registry artifacts (kind AI_DEPLOYMENT); the tenant's runtime is the artifact TELCO-AI-RUNTIME (kind AI_RUNTIME_PROFILE). Changing it on the AI Runtime screen publishes a new version | Proposed |
+| Strategies | CUSTOMER_REGISTRY uses deployments hosted in the customer's registry; PLATFORM_MANAGED uses the platform's configured model (standalone: PRA_AI_PROVIDER; AI Studio: the studio's AI service); BYO_ENDPOINT uses customer-hosted endpoints; NO_LLM uses templates only | Proposed |
+| Bring-your-own endpoint contract | `POST {endpoint}` with JSON {task, system, prompt, schema, max_tokens, model} and a Bearer secret; reply {output} or {text}. https only (http only for localhost) | Proposed |
+| Routing | TASK_SPECIFIC: per task a primary and an optional fallback; QUALITY_FIRST / COST_OPTIMISED: ranked by quality or cost tier; CUSTOMER_HOSTED_ONLY: never the platform model. At most 2 models per task, then the deterministic template | Proposed |
+| Governance checks | A deployment is eligible only if published, not expired, fits the strategy, its region is allowed, it is approved for the data class (AGGREGATES by default), it supports JSON-schema output, tool use is off unless allowed, and it is within the cost/latency budget | Proposed |
+| Fail closed | A profile is not published while any model route has no eligible deployment; a missing credential is a warning (the template is used until it is set) | Proposed |
+| Failure treatment | DETERMINISTIC_FALLBACK and ALTERNATE_APPROVED_MODEL both end in the template; HUMAN_REVIEW also flags the result for review; BLOCK_AI_EXPLANATION shows only the template | Proposed |
+| Secrets | API keys are stored Fernet-encrypted per tenant (`ai_secret`), write-only through the API; deployments reference them by name (`secretRef`). PRA_ANTHROPIC_API_KEY stays as a local fallback | Proposed |
+| Audit | Every AI call is logged append-only (`ai_invocation`): task, profile and deployment refs, model, attempts, errors, request and output hashes. Runs pin the profile and per-task deployment refs (used by the Run Manifest, Step 9) | Proposed |
+| Permissions | AI Runtime tab and changes need `config.ai` (Agent Admin); others with registry read may view the configuration via the API | Proposed |
+
 ## Proposed defaults (AI Studio contract not decided yet; confirm with the colleague)
 | Topic | Default | Status |
 |---|---|---|

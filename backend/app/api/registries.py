@@ -46,6 +46,8 @@ class RegistryKind(StrEnum):
     EVIDENCE_TEMPLATES = "evidence-templates"
     PRECEDENCE_POLICIES = "precedence-policies"
     READINESS_POLICIES = "readiness-policies"
+    AI_DEPLOYMENTS = "ai-deployments"
+    AI_RUNTIME_PROFILES = "ai-runtime-profiles"
 
 
 KINDS = {
@@ -56,6 +58,8 @@ KINDS = {
     RegistryKind.EVIDENCE_TEMPLATES: ArtifactKind.EVIDENCE_TEMPLATE,
     RegistryKind.PRECEDENCE_POLICIES: ArtifactKind.PRECEDENCE_POLICY,
     RegistryKind.READINESS_POLICIES: ArtifactKind.READINESS_POLICY,
+    RegistryKind.AI_DEPLOYMENTS: ArtifactKind.AI_DEPLOYMENT,
+    RegistryKind.AI_RUNTIME_PROFILES: ArtifactKind.AI_RUNTIME_PROFILE,
 }
 
 Reader = Annotated[Principal, Depends(require_permission(Permission.REGISTRY_READ))]

@@ -65,7 +65,7 @@ field specification were supplied; revised again the same day after the 5 candid
   per candidate/disposition; AVAILABLE / PARTIAL / NOT_ASSESSED / BLOCKED (+ stale/conflicted flags).
 - Screen: Evidence Readiness (screen 11).
 
-## Step 8: AI runtime and model registry · TODO
+## Step 8: AI runtime and model registry · DONE
 - Registries/deployments as data (no hard-coded models or providers); AI strategy (CUSTOMER_REGISTRY,
   PLATFORM_MANAGED, BYO_ENDPOINT, NO_LLM); task routes; routing policy; fallback chain (max 2 models, then
   deterministic template); governance checks. Anthropic becomes one provider adapter behind a deployment.

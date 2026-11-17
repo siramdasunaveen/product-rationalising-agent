@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Navigate, Route, Routes, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
-  AssessmentsScreen, CreateRunScopeScreen, EvidenceHubScreen, EvidenceReadinessScreen, MappingRulesScreen,
+  AIRuntimeScreen, AssessmentsScreen, CreateRunScopeScreen, EvidenceHubScreen, EvidenceReadinessScreen, MappingRulesScreen,
   PlaceholderScreen, ReconciliationScreen, useManifest,
 } from "../src";
 import { tokenStore } from "./auth";
@@ -38,7 +38,7 @@ export function App() {
 
 function ScreenRoutes() {
   const { data: manifest } = useManifest();
-  const built = new Set(["/", "/evidence-readiness"]);
+  const built = new Set(["/", "/evidence-readiness", "/ai-runtime"]);
   const placeholders = (manifest?.nav ?? []).filter((n) => !built.has(n.path));
   return (
     <Routes>
@@ -49,6 +49,7 @@ function ScreenRoutes() {
       <Route path="/runs/:runId/evidence/:domain/mapping" element={<MappingRoute />} />
       <Route path="/runs/:runId/reconciliation" element={<ReconciliationRoute />} />
       <Route path="/evidence-readiness" element={<ReadinessRoute />} />
+      <Route path="/ai-runtime" element={<AIRuntimeScreen />} />
       <Route path="/runs/:runId/readiness" element={<ReadinessRoute />} />
       <Route
         path="/runs/:runId/scoring"

@@ -61,7 +61,8 @@ from app.ports.audit import AuditLog, AuditRecord
 from app.ports.auth import Principal
 from app.ports.notify import Notification
 from app.services import artifacts as registry
-from app.services.ai_runner import run_ai_task
+from app.domain.ai_runtime import Task
+from app.services import ai_runtime
 from app.services.errors import ServiceError
 from app.services.evidence import EDITABLE_STATES, selected_domains, template_for
 from app.services.outbox import emit
@@ -705,9 +706,11 @@ def ai_suggest(session: Session, platform: Platform, principal: Principal, run_i
     }
     prompt = json.dumps({"columns": [{"header": c["header"], "type": c["type"], "samples": c["samples"][:5]}
                                      for c in columns], "targets": targets}, ensure_ascii=False)
-    result = run_ai_task(platform.ai, AIRequest(task="mapping_suggestion", system=AI_SYSTEM, prompt=prompt,
-                                                schema=schema, max_tokens=2000),
-                         fallback=lambda: {"suggestions": []})
+    result = ai_runtime.run_task(session, platform, principal.tenant_id, principal.user_id,
+                                 Task.MAPPING_SUGGESTION,
+                                 AIRequest(task=Task.MAPPING_SUGGESTION.value, system=AI_SYSTEM, prompt=prompt,
+                                           schema=schema, max_tokens=2000),
+                                 fallback=lambda: {"suggestions": []}, run_id=definition.run_id)
     lookups = _selectable_refs(session, principal.tenant_id, ArtifactKind.LOOKUP)
     transforms = _selectable_refs(session, principal.tenant_id, ArtifactKind.TRANSFORM)
     by_header = {c["header"]: c for c in columns}
@@ -734,7 +737,8 @@ def ai_suggest(session: Session, platform: Platform, principal: Principal, run_i
         session.flush()
         _replace_rules(session, v, rules + added)
         _audit(platform.audit, session, principal, "mapping.ai_suggested", v, definition,
-               {"added": [r.key for r in added], "source": result.source, "model": result.model})
+               {"added": [r.key for r in added], "source": result.source, "model": result.model,
+                "deployment": result.deployment})
     session.commit()
     return {"added": len(added), "source": result.source, "version": v}
 

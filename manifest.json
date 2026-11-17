@@ -56,7 +56,8 @@
     { "key": "opportunities", "label": "Rationalisation Opportunities", "path": "/opportunities", "permission": "candidate.view", "sidebarLabel": "Rationalisation Opportunities" },
     { "key": "decision-approvals", "label": "Decision Approvals", "path": "/decision-approvals", "permission": "read", "sidebarLabel": "Decision Approvals" },
     { "key": "transition-plans", "label": "Transition Plans", "path": "/transition-plans", "permission": "read", "status": "not_specified", "sidebarLabel": "Transition Plans" },
-    { "key": "outcomes-benefits", "label": "Outcomes & Benefits", "path": "/outcomes-benefits", "permission": "read", "status": "not_specified" }
+    { "key": "outcomes-benefits", "label": "Outcomes & Benefits", "path": "/outcomes-benefits", "permission": "read", "status": "not_specified" },
+    { "key": "ai-runtime", "label": "AI Runtime", "path": "/ai-runtime", "permission": "config.ai" }
   ],
   "requiredConnectors": [],
   "optionalConnectors": ["excel", "salesforce"]

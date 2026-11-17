@@ -13,4 +13,5 @@ export { EvidenceHubScreen } from "./screens/EvidenceHubScreen";
 export { MappingRulesScreen } from "./screens/MappingRulesScreen";
 export { ReconciliationScreen } from "./screens/ReconciliationScreen";
 export { EvidenceReadinessScreen } from "./screens/EvidenceReadinessScreen";
+export { AIRuntimeScreen } from "./screens/AIRuntimeScreen";
 export { PlaceholderScreen } from "./screens/PlaceholderScreen";
