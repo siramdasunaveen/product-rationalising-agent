@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 from app.adapters.registry import Platform
 from app.config import Settings
-from app.db.models import EvidenceSource, EvidenceUpload, Run, SourceSchemaVersion
+from app.db.models import EvidenceRequest, EvidenceSource, EvidenceUpload, Run, SourceSchemaVersion
 from app.domain.artifacts import ArtifactKind, canonical_json, format_ref
 from app.domain.common import FieldError
 from app.domain.evidence import (
@@ -127,9 +127,27 @@ def _run(session: Session, tenant_id: str, run_id: uuid.UUID, *, for_update: boo
     return run
 
 
-def _require_editable(run: Run) -> None:
-    if run.state not in EDITABLE_STATES:
-        raise EvidenceNotEditable(f"Evidence can only be changed while the run is configuring (now {run.state})")
+def evidence_locked(session: Session, run: Run) -> str | None:
+    """Why evidence cannot change now, or None. Evidence is editable while configuring, and again in REVIEW while
+    the run has an evidence request waiting for a return (step 13: progressive evidence collection)."""
+    if run.state in EDITABLE_STATES:
+        return None
+    if run.state == RunState.REVIEW.value and session.scalar(select(EvidenceRequest.id).where(
+            EvidenceRequest.run_id == run.id, EvidenceRequest.tenant_id == run.tenant_id,
+            EvidenceRequest.status.in_(("OPEN", "IN_PROGRESS", "REJECTED"))).limit(1)):
+        return None
+    return (f"Evidence can only be changed while the run is configuring or has an open evidence request "
+            f"(now {run.state})")
+
+
+def is_editable(session: Session, run: Run) -> bool:
+    return evidence_locked(session, run) is None
+
+
+def _require_editable(session: Session, run: Run) -> None:
+    reason = evidence_locked(session, run)
+    if reason:
+        raise EvidenceNotEditable(reason)
 
 
 def selected_domains(run: Run) -> list[EvidenceDomain]:
@@ -212,13 +230,13 @@ def overview(session: Session, tenant_id: str, run_id: uuid.UUID) -> EvidenceOve
             status=domain_status([(u.status, u.schema_version_id is not None) for u in ups]),
             uploads=ups, template_ref=tpl[0] if tpl else None, sources=sources_of(session, run, d)))
     return EvidenceOverview(run=run, selection_confirmed=run.evidence_domains is not None,
-                            editable=run.state in EDITABLE_STATES, domains=views)
+                            editable=is_editable(session, run), domains=views)
 
 
 def set_domains(session: Session, audit: AuditLog, principal: Principal, run_id: uuid.UUID,
                 domains: list[str], expected_version: int) -> Run:
     run = _run(session, principal.tenant_id, run_id, for_update=True)
-    _require_editable(run)
+    _require_editable(session, run)
     if run.version != expected_version:
         raise EvidenceVersionConflict("This run was changed by someone else. Reload and try again.")
     unknown = [d for d in domains if d not in DOMAINS]
@@ -282,7 +300,7 @@ def add_source(session: Session, audit: AuditLog, principal: Principal, run_id: 
     """Another Excel source for a domain, e.g. a second CRM export from another system."""
     domain = _domain(domain_value)
     run = _run(session, principal.tenant_id, run_id)
-    _require_editable(run)
+    _require_editable(session, run)
     if domain not in selected_domains(run):
         raise DomainNotSelected(f"{DOMAINS[domain].label} is not selected for this run")
     name = " ".join((name or "").split())
@@ -323,7 +341,7 @@ def upload_file(session: Session, platform: Platform, limits: FileLimits, princi
                 source_id: uuid.UUID | None = None) -> UploadResult:
     domain = _domain(domain_value)
     run = _run(session, principal.tenant_id, run_id)
-    _require_editable(run)
+    _require_editable(session, run)
     if domain not in selected_domains(run):
         raise DomainNotSelected(f"{DOMAINS[domain].label} is not selected for this run")
     filename = (filename or "upload.xlsx").replace("\\", "/").rsplit("/", 1)[-1][:255]
@@ -500,7 +518,7 @@ def confirm_schema(session: Session, platform: Platform, limits: FileLimits, pri
                    run_id: uuid.UUID, upload_id: uuid.UUID, sheet: str, header_row: int,
                    as_of: date | None = None) -> ConfirmResult:
     run = _run(session, principal.tenant_id, run_id)
-    _require_editable(run)
+    _require_editable(session, run)
     as_of = as_of or datetime.now(UTC).date()
     if as_of > datetime.now(UTC).date():
         raise EvidenceValidationError("The data cannot be from the future",

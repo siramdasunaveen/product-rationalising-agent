@@ -49,7 +49,7 @@ from app.ports.auth import Principal
 from app.seed.telco import PRECEDENCE_KEY
 from app.services import artifacts as registry
 from app.services.errors import ServiceError
-from app.services.evidence import EDITABLE_STATES, selected_domains
+from app.services.evidence import evidence_locked, selected_domains
 from app.services.outbox import emit
 
 RECONCILE_JOB = "app.jobs.reconciliation.reconcile_run"
@@ -147,9 +147,9 @@ def _resolve_policy(session: Session, tenant_id: str):
 def request_reconciliation(session: Session, platform: Platform, principal: Principal,
                            run_id: uuid.UUID) -> ReconciliationRun:
     run = _run(session, principal.tenant_id, run_id)
-    if run.state not in EDITABLE_STATES:
-        raise ReconciliationConflictError(f"Evidence can only be reconciled while the run is configuring "
-                                          f"(now {run.state})")
+    locked = evidence_locked(session, run)
+    if locked:
+        raise ReconciliationConflictError(locked)
     inputs = current_inputs(session, run)
     if not inputs:
         raise ReconciliationConflictError("Apply at least one published mapping first",
@@ -301,8 +301,9 @@ def _recount(session: Session, rec: ReconciliationRun) -> None:
 def decide(session: Session, platform: Platform, principal: Principal, run_id: uuid.UUID, conflict_id: uuid.UUID,
            decision: str, source_id: str | None, value: Any, rationale: str | None) -> ReconciliationConflict:
     run = _run(session, principal.tenant_id, run_id)
-    if run.state not in EDITABLE_STATES:
-        raise ReconciliationConflictError(f"Evidence can only be changed while the run is configuring (now {run.state})")
+    locked = evidence_locked(session, run)
+    if locked:
+        raise ReconciliationConflictError(locked)
     conflict = session.scalar(select(ReconciliationConflict).where(
         ReconciliationConflict.id == conflict_id, ReconciliationConflict.tenant_id == principal.tenant_id
     ).with_for_update())
@@ -397,7 +398,7 @@ def approval_blockers(session: Session, run: Run, rec: ReconciliationRun | None)
     open_material = (rec.counts or {}).get("open_material_conflicts", 0)
     if open_material:
         blockers.append(f"{open_material} material conflict(s) still need a Data Steward decision")
-    if run.state not in EDITABLE_STATES:
+    if evidence_locked(session, run):
         blockers.append(f"The run is {run.state}; evidence is locked")
     return blockers
 
@@ -452,6 +453,9 @@ def approve_snapshot(session: Session, platform: Platform, principal: Principal,
             "tenant_id": run.tenant_id, "snapshot_id": snap.id, "evidence_id": e["evidence_id"], "name": e["name"],
             "from_entity": e["from_entity"], "from_key": e["from_key"], "to_entity": e["to_entity"],
             "to_key": e["to_key"], "sources": e["sources"]} for e in rels])
+    from app.services import evidence_requests  # step 13: a return may satisfy open requests
+
+    evidence_requests.on_snapshot_approved(session, run, snap)
     _audit_event(session, platform, principal, principal.tenant_id, "evidence.snapshot_approved",
                  "EvidenceSnapshotApproved", "evidence_snapshot", str(snap.id), {
                      "run_id": str(run.id), "code": snap.code, "content_hash": content_hash,

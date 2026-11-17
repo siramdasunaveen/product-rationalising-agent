@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ApiError } from "../api/client";
 import { usePermissions } from "../api/identity";
+import { useDetectRequests } from "../api/evidenceRequests";
 import {
   checkReadiness, useAddComment, useCandidate, useComments, useExplain, type CandidateDetail, type Readiness,
 } from "../api/candidates";
@@ -18,12 +19,15 @@ const TONE: Record<string, string> = { PASS: "success", FAIL: "danger", NOT_ASSE
 const pill = (s: string | null | undefined) => <span className={`pra-pill pra-pill--${TONE[s ?? ""] ?? "muted"}`}>{title(s)}</span>;
 
 type Props = { runId: string; candidateRef: string; focusBlockerId?: string; onBack: () => void;
+  onOpenEvidenceRequest?: (code: string) => void;
   onContinueToDecision: (candidateId: string, action: string, targetProductId: string | null) => void };
 
 /** Step 12 (screens 08 and 12): one candidate end to end. Numbers are exact server values with the server's
  *  display strings; Continue to Decision is enabled only by the server-side readiness check (fails closed). */
-export function CandidateReviewScreen({ runId, candidateRef, focusBlockerId, onBack, onContinueToDecision }: Props) {
+export function CandidateReviewScreen({ runId, candidateRef, focusBlockerId, onBack, onOpenEvidenceRequest,
+  onContinueToDecision }: Props) {
   const q = useCandidate(runId, candidateRef);
+  const detect = useDetectRequests(runId);
   const { has } = usePermissions();
   const [tab, setTab] = useState<Tab>("evidence");
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +81,24 @@ export function CandidateReviewScreen({ runId, candidateRef, focusBlockerId, onB
       {error && <div className="pra-alert" role="alert">{error}</div>}
       {rec.preliminary && <div className="pra-notice" role="status">Preliminary recommendation: evidence is missing. Only
         Investigate can be submitted until it is provided.</div>}
+      {(d.evidenceRequests.length > 0 || d.blockers.some((b) => b.category === "EVIDENCE" && b.state !== "RESOLVED")) && (
+        <section className="pra-card" aria-label="Evidence needs">
+          <h2 className="pra-overview__h2">Evidence needs <span className="pra-muted">· {d.openEvidenceNeeds} open</span></h2>
+          <ul className="pra-review__policies">
+            {d.evidenceRequests.map((r) => (
+              <li key={r.code}>
+                <a href="#request" onClick={(e) => { e.preventDefault(); onOpenEvidenceRequest?.(r.code); }}><strong>{r.code}</strong></a>
+                {" "}{title(r.domain)} · {r.decisionImpact} <span className="pra-muted">· {title(r.status)}{r.dueDate ? ` · due ${r.dueDate}` : ""}</span>
+              </li>
+            ))}
+          </ul>
+          {has("decision.submit") && (
+            <button type="button" className="pra-button pra-button--ghost" disabled={detect.isPending}
+              onClick={async () => { setError(null); try { await detect.mutateAsync(d.candidateId); } catch (e) { setError(errText(e)); } }}>
+              Request evidence</button>
+          )}
+        </section>
+      )}
 
       <section className="pra-kpis pra-review__cards" aria-label="Key metrics">
         {cards.map((c) => (

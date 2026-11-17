@@ -110,7 +110,7 @@ field specification were supplied; revised again the same day after the 5 candid
   the accepted explanation.
 - Done when: the CAND-1042 end-to-end example passes (happy path).
 
-## Step 13: Evidence gaps and requests · TODO
+## Step 13: Evidence gaps and requests · DONE
 - Gap detection per emerging disposition; logical evidence contract; fulfilment channels; lifecycle
   DRAFT → OPEN → IN_PROGRESS → RECEIVED → ACCEPTED/REJECTED/SUPERSEDED; one return can satisfy several
   requests; accept → child snapshot → targeted reassessment with pinned versions (screens 13, 14, 15).

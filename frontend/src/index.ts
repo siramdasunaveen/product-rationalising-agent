@@ -19,4 +19,6 @@ export { ReviewStartScreen } from "./screens/ReviewStartScreen";
 export { RunOverviewScreen } from "./screens/RunOverviewScreen";
 export { CandidateExplorerScreen } from "./screens/CandidateExplorerScreen";
 export { CandidateReviewScreen } from "./screens/CandidateReviewScreen";
+export { EvidenceRequestsScreen } from "./screens/EvidenceRequestsScreen";
+export { EvidenceRequestScreen } from "./screens/EvidenceRequestScreen";
 export { PlaceholderScreen } from "./screens/PlaceholderScreen";

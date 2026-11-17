@@ -212,6 +212,18 @@ The guides give the Opportunity Score and priority formulas and the CAND-1042 va
 | Discussion | Comments are collaboration only (never evidence), 1-2000 characters, control and bidi characters stripped, audited | Proposed |
 | Candidate references | A candidate is addressed by its stable code (CAND-0001) or id; the id of a superseded version resolves to the current candidate with the same code | Proposed |
 
+## Step 13: Evidence gaps and requests (built 17 Nov 2026 in continuous mode; developer to review)
+| Topic | Decision | Status |
+|---|---|---|
+| Gap = blocker | An evidence gap is an active, applicable EVIDENCE blocker (EVIDENCE_REQUIRED from the disposition matrix and the technical gate, EVIDENCE_STALE from the freshness rule). One request per candidate + domain; asking again opens the existing request (never a duplicate). Codes ER-101, ER-102 ... per run | Proposed |
+| Contract | The logical contract (purpose, metrics, grouping, filters, return, freshness days from the readiness policy else 30, privacy, products, what it unlocks) is generated per domain and disposition; users choose only owner, due date and fulfilment channel (SECURE_QUERY default, API_CONNECTOR, SCHEDULED_EXTRACT, EXCEL_AGGREGATE) | Proposed |
+| Lifecycle | DRAFT -> OPEN (assign) -> IN_PROGRESS (start creates the channel job; Excel points at the governed template and the Evidence Hub upload) -> RECEIVED (system, when a new snapshot is approved that carries a new execution of the request's domain) -> ACCEPTED (Data Steward) or REJECTED (reason required; the same return is never received again, a corrected one is) -> SUPERSEDED when another accepted return or a reassessment closed the gap. Every change is an append-only event | Proposed |
+| Evidence lock | After Start, evidence (sources, uploads, mappings, reconciliation, snapshot approval) is editable again only while the run is in REVIEW with an OPEN, IN_PROGRESS or REJECTED request; otherwise it stays locked. Returned evidence goes through the same validation, mapping, reconciliation and approval as the original | Proposed |
+| One return, many requests | Accepting one request accepts every RECEIVED request that the same snapshot satisfies (coverage checked per product with the readiness measures) and queues one reassessment on that child snapshot with the run's pinned manifest; the run goes ANALYSING -> REVIEW | Proposed |
+| Targeted reassessment | The reassessment re-runs the deterministic pipeline on the child snapshot; candidate codes are kept, unchanged candidates reproduce the same assessment hash, and only the candidates whose facts changed get new values. Blockers no longer raised are RESOLVED and their requests are completed (reassessment DONE) or superseded | Proposed |
+| Permissions | Create/assign: decision.submit or evidence.map. Start: request.fulfil, evidence.upload or evidence.map. Accept/reject: snapshot.approve. Read: candidate.view, request.fulfil, evidence.map or snapshot.approve | Proposed |
+| Seed scenario | The CAND-1042 gap branch is the test `test_gap_branch_end_to_end` (PROVISIONING missing -> ER-101 -> SNAP-002 -> reassessment); the guide's ER-102/ER-103 numbering is illustrative | Proposed |
+
 ## Production security (developer's request, 17 Nov 2026)
 | Topic | Decision | Status |
 |---|---|---|

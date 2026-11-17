@@ -46,7 +46,10 @@ export type CandidateDetail = {
   evidence: EvidenceRow[]; impact: Record<string, unknown>; alternatives: Alternative[]; policies: PolicyItem[];
   blockers: { id: string; code: string; category: string; state: string; consequence: string; severity: string;
     domain: string; message: string; ownerRole: string | null; dueDate: string | null; resolution: string | null }[];
-  decisionReadiness: Readiness | null; openEvidenceNeeds: number; evidenceIds: string[]; projectionVersion: number;
+  decisionReadiness: Readiness | null; openEvidenceNeeds: number;
+  evidenceRequests: { code: string; domain: string; status: string; ownerRole: string; dueDate: string | null;
+    decisionImpact: string }[];
+  evidenceIds: string[]; projectionVersion: number;
   etag: string;
 };
 export type Comment = { id: string; authorId: string; body: string; createdAt: string };

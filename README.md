@@ -210,6 +210,15 @@ Decision* is decided by the server: seven readiness gates for the chosen action,
 continuing and failing closed if the candidate was reassessed meanwhile. An AI explanation is optional, must cite
 existing evidence ids and falls back to a deterministic template; its confidence is never used in a score.
 
+## Evidence requests
+
+When an assessment needs evidence that is missing or stale, the candidate carries an EVIDENCE blocker and *Request
+evidence* (or *Detect gaps* on the queue) creates an **Evidence Request**: a logical evidence contract (metrics,
+grouping, filters, return, freshness, privacy) that the customer fulfils through a secure query, API, scheduled
+extract or the governed Excel template. The queue (**Evidence Needed**) shows open, blocking, awaiting and ready
+counts. A return arrives through the Evidence Hub as a new approved snapshot; every request it refreshes becomes
+Received, accepting it runs a reassessment on the child snapshot with the run's pinned versions, and the gap closes.
+
 ## AI
 
 Every AI task goes through the **AI Runtime** (tab visible to Agent Admins). Approved models and endpoints are

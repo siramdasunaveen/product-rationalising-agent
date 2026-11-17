@@ -64,7 +64,7 @@ from app.services import artifacts as registry
 from app.domain.ai_runtime import Task
 from app.services import ai_runtime
 from app.services.errors import ServiceError
-from app.services.evidence import EDITABLE_STATES, selected_domains, template_for
+from app.services.evidence import evidence_locked, selected_domains, template_for
 from app.services.outbox import emit
 
 M = MappingStatus
@@ -130,9 +130,10 @@ def _run(session: Session, tenant_id: str, run_id: uuid.UUID) -> Run:
     return run
 
 
-def _require_run_editable(run: Run) -> None:
-    if run.state not in EDITABLE_STATES:
-        raise MappingNotEditable(f"Mappings can only be changed while the run is configuring (now {run.state})")
+def _require_run_editable(session: Session, run: Run) -> None:
+    locked = evidence_locked(session, run)
+    if locked:
+        raise MappingNotEditable(locked.replace("Evidence", "Mappings", 1))
 
 
 def _excel_source(session: Session, run: Run, domain: str, source_id: uuid.UUID | None = None) -> EvidenceSource:
@@ -346,7 +347,7 @@ def create_mapping(session: Session, platform: Platform, principal: Principal, r
                    schema_version_id: uuid.UUID | None = None,
                    source_id: uuid.UUID | None = None) -> tuple[MappingDefinition, MappingVersion]:
     run = _run(session, principal.tenant_id, run_id)
-    _require_run_editable(run)
+    _require_run_editable(session, run)
     source = _excel_source(session, run, domain, source_id)
     if EvidenceDomain(domain) not in selected_domains(run):
         raise MappingConflict("This domain is not selected for the run")
@@ -427,7 +428,7 @@ def _parse_rules(items: list[dict[str, Any]]) -> list[Rule]:
 def save_draft(session: Session, platform: Platform, principal: Principal, run_id: uuid.UUID, mapping_id: uuid.UUID,
                number: int, rules_input: list[dict[str, Any]], expected_lock: int) -> MappingVersion:
     run = _run(session, principal.tenant_id, run_id)
-    _require_run_editable(run)
+    _require_run_editable(session, run)
     definition = get_definition(session, principal.tenant_id, run_id, mapping_id)
     v = get_version(session, definition, number, for_update=True)
     if MappingStatus(v.status) not in EDITABLE:
@@ -452,7 +453,7 @@ def save_draft(session: Session, platform: Platform, principal: Principal, run_i
 def clone_version(session: Session, platform: Platform, principal: Principal, run_id: uuid.UUID,
                   mapping_id: uuid.UUID, number: int, schema_version_id: uuid.UUID | None = None) -> MappingVersion:
     run = _run(session, principal.tenant_id, run_id)
-    _require_run_editable(run)
+    _require_run_editable(session, run)
     definition = get_definition(session, principal.tenant_id, run_id, mapping_id)
     session.execute(select(MappingDefinition.id).where(MappingDefinition.id == definition.id).with_for_update())
     src = get_version(session, definition, number)

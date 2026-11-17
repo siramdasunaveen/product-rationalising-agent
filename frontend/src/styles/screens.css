@@ -577,3 +577,25 @@
 .pra-review__comment textarea { width: 100%; }
 @media (max-width: 900px) { .pra-explorer { grid-template-columns: 1fr; }
   .pra-explorer__row, .pra-review__ev, .pra-review__alt { grid-template-columns: 1fr; } }
+
+/* Step 13: Evidence requests (13, 14, 15) */
+.pra-er__row { grid-template-columns: 110px 1.4fr 1.4fr 1.4fr 1.6fr; font-size: 13px; }
+.pra-er__note { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline; background: #e8f8ee; border-color: #bfe3cc; margin: var(--space-4) 0; }
+.pra-er__steps { margin-bottom: var(--space-4); }
+.pra-er__impact { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin-bottom: var(--space-4); }
+.pra-er__impact--blocking { background: #fff7ea; border-color: #f1d5a3; }
+.pra-er__grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4); }
+.pra-er__dl { display: grid; grid-template-columns: 110px 1fr; gap: var(--space-2) var(--space-3); font-size: 13px; margin: var(--space-3) 0; }
+.pra-er__dl dt { color: var(--color-text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.pra-er__dl dd { margin: 0; }
+.pra-er__methods { display: grid; gap: var(--space-2); margin-bottom: var(--space-3); }
+.pra-er__method { display: grid; grid-template-columns: 1fr auto; gap: 2px var(--space-3); text-align: left; padding: var(--space-3);
+  border: 1.5px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); font: inherit; font-size: 13px; cursor: pointer; }
+.pra-er__method strong { grid-column: 1; } .pra-er__method .pra-muted { grid-column: 1; font-size: 12px; }
+.pra-er__method .pra-pill { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+.pra-er__method--on { border-color: var(--color-success); background: #e8f8ee; }
+.pra-er__method:disabled { cursor: default; opacity: .8; }
+.pra-er__assign { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); font-size: 13px; }
+.pra-er__assign label { display: grid; gap: 4px; }
+.pra-er__decide { display: grid; gap: var(--space-2); margin-top: var(--space-3); }
+@media (max-width: 900px) { .pra-er__grid, .pra-er__assign { grid-template-columns: 1fr; } .pra-er__row { grid-template-columns: 1fr; } }

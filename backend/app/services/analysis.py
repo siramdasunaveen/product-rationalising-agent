@@ -446,6 +446,9 @@ def run_analysis(session: Session, platform: Platform, analysis_id: uuid.UUID) -
         a.status = "SUCCEEDED"
         a.finished_at = _now()
         run.state = RunState.REVIEW.value
+        from app.services import evidence_requests  # step 13: close the loop on accepted evidence
+
+        evidence_requests.on_reassessed(session, run, a)
         run.updated_at = _now()
         payload = {"analysis_id": str(a.id), "counts": a.counts, "result_hash": a.result_hash}
         platform.audit.record(AuditRecord(tenant_id=run.tenant_id, actor_id="system:analysis", actor_roles=(),

@@ -493,13 +493,26 @@ def detail(session: Session, run: Run, ref: str) -> dict[str, Any]:
                       "dueDate": b.due_date.isoformat() if b.due_date else None,
                       "resolution": b.resolution} for b in blockers],
         "decisionReadiness": readiness,
-        "openEvidenceNeeds": 0,
+        "openEvidenceNeeds": _open_needs(session, run, c.code),
+        "evidenceRequests": _requests(session, run, c.code),
         "findings": [{"type": f.detector_type, "signal": f.signal, "band": f.band, "factors": f.factors,
                       "evidenceIds": f.evidence_ids, "notes": f.notes} for f in findings],
         "evidenceIds": list(c.evidence_ids),
         "projectionVersion": run.projection_version or 0,
         "etag": f'W/"{c.analysis_id}-{(c.assessment_hash or "")[7:19]}"',
     }
+
+
+def _open_needs(session: Session, run: Run, code: str) -> int:
+    from app.services import evidence_requests
+    return evidence_requests.open_needs(session, run, code)
+
+
+def _requests(session: Session, run: Run, code: str) -> list[dict[str, Any]]:
+    from app.services import evidence_requests
+    return [{"code": r.code, "domain": r.domain, "status": r.status, "ownerRole": r.owner_role,
+             "dueDate": r.due_date.isoformat() if r.due_date else None, "decisionImpact": r.decision_impact}
+            for r in evidence_requests.list_requests(session, run.tenant_id, run, candidate=code)]
 
 
 def check_readiness(session: Session, run: Run, ref: str, action: str, target: str | None,

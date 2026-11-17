@@ -858,3 +858,54 @@ class SavedView(IdMixin, TenantMixin, CreatedAtMixin, Base):
     filters: Mapped[dict] = mapped_column(JSONB, nullable=False)
     sort: Mapped[list] = mapped_column(JSONB, nullable=False)
     visible_columns: Mapped[list] = mapped_column(JSONB, nullable=False)
+
+
+class EvidenceRequest(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """A logical evidence contract for one gap of one candidate (ER-101 ...). The user chooses owner, due date
+    and fulfilment channel; the system owns the contract and drives the status."""
+
+    __tablename__ = "evidence_request"
+    __table_args__ = (UniqueConstraint("run_id", "code", name="uq_evidence_request_run_code"),)
+
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.run.id"), nullable=False)
+    code: Mapped[str] = mapped_column(String(16), nullable=False)
+    candidate_code: Mapped[str] = mapped_column(String(16), nullable=False)
+    candidate_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    blocker_code: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    blocker_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    domain: Mapped[str] = mapped_column(String(40), nullable=False)
+    action: Mapped[str | None] = mapped_column(String(16), nullable=True)  # emerging disposition
+    trigger: Mapped[str] = mapped_column(String(200), nullable=False)
+    evidence_needed: Mapped[str] = mapped_column(String(200), nullable=False)
+    decision_impact: Mapped[str] = mapped_column(String(200), nullable=False)
+    consequence: Mapped[str] = mapped_column(String(16), nullable=False)  # BLOCKED | WARNING_ONLY
+    priority: Mapped[str] = mapped_column(String(10), nullable=False)
+    contract: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    owner_role: Mapped[str] = mapped_column(String(40), nullable=False)
+    owner_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    fulfilment_method: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    fulfilment_job: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    status_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    snapshot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.evidence_snapshot.id"), nullable=False)
+    baseline_executions: Mapped[list] = mapped_column(JSONB, nullable=False)
+    received_snapshot_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    accepted_snapshot_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    reassessment_analysis_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    reassessment_status: Mapped[str] = mapped_column(String(16), nullable=False, default="NONE")
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class EvidenceRequestEvent(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """Append-only lifecycle history of an evidence request."""
+
+    __tablename__ = "evidence_request_event"
+
+    request_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.evidence_request.id"), nullable=False)
+    from_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(16), nullable=False)
+    actor_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    detail: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)

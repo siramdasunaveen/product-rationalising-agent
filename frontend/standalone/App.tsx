@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Navigate, Route, Routes, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   AIRuntimeScreen, AssessmentsScreen, CandidateExplorerScreen, CandidateReviewScreen, CreateRunScopeScreen,
+  EvidenceRequestScreen, EvidenceRequestsScreen,
   EvidenceHubScreen, EvidenceReadinessScreen, MappingRulesScreen, PlaceholderScreen, ReconciliationScreen,
   ReviewStartScreen, RunOverviewScreen, ScoringRouteScreen, useManifest,
 } from "../src";
@@ -39,7 +40,7 @@ export function App() {
 
 function ScreenRoutes() {
   const { data: manifest } = useManifest();
-  const built = new Set(["/", "/evidence-readiness", "/ai-runtime"]);
+  const built = new Set(["/", "/evidence-readiness", "/ai-runtime", "/evidence-needed"]);
   const placeholders = (manifest?.nav ?? []).filter((n) => !built.has(n.path));
   return (
     <Routes>
@@ -57,6 +58,9 @@ function ScreenRoutes() {
       <Route path="/runs/:runId/overview" element={<OverviewRoute />} />
       <Route path="/runs/:runId/candidates" element={<ExplorerRoute />} />
       <Route path="/runs/:runId/candidates/:candidateId" element={<CandidateRoute />} />
+      <Route path="/evidence-needed" element={<RequestsRoute />} />
+      <Route path="/runs/:runId/evidence-requests" element={<RequestsRoute />} />
+      <Route path="/runs/:runId/evidence-requests/:code" element={<RequestRoute />} />
       {placeholders.map((n) => (
         <Route
           key={n.key}
@@ -189,8 +193,30 @@ function CandidateRoute() {
     <CandidateReviewScreen key={candidateId} runId={runId!} candidateRef={candidateId!}
       focusBlockerId={params.get("blockerId") ?? undefined}
       onBack={() => navigate(`/runs/${runId}/candidates`)}
+      onOpenEvidenceRequest={(code) => navigate(`/runs/${runId}/evidence-requests/${code}`)}
       onContinueToDecision={(id, action, target) =>
         navigate(`/runs/${runId}/candidates/${id}/decision?action=${action}${target ? `&target=${target}` : ""}`)} />
+  );
+}
+
+function RequestsRoute() {
+  const { runId } = useParams();
+  const navigate = useNavigate();
+  return (
+    <EvidenceRequestsScreen key={runId ?? "all"} runId={runId}
+      onOpenRequest={(rid, code) => navigate(`/runs/${rid}/evidence-requests/${code}`)}
+      onOpenCandidate={(rid, cand) => navigate(`/runs/${rid}/candidates/${cand}`)} />
+  );
+}
+
+function RequestRoute() {
+  const { runId, code } = useParams();
+  const navigate = useNavigate();
+  return (
+    <EvidenceRequestScreen key={code} runId={runId!} code={code!}
+      onBack={() => navigate(`/runs/${runId}/evidence-requests`)}
+      onOpenCandidate={(cand) => navigate(`/runs/${runId}/candidates/${cand}`)}
+      onOpenEvidenceHub={() => navigate(`/runs/${runId}/evidence`)} />
   );
 }
 
