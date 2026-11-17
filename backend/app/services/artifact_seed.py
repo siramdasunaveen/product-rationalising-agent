@@ -14,7 +14,15 @@ from app.db.models import Artifact, ArtifactVersion
 from app.domain.artifacts import FIRST_VERSION, ArtifactKind, ArtifactStatus, Bump, format_ref
 from app.ports.audit import AuditLog
 from app.ports.auth import Principal
-from app.seed.telco import CANONICAL_KEY, LOOKUPS, TELCO_CANONICAL, TEMPLATES, TRANSFORMS
+from app.seed.telco import (
+    CANONICAL_KEY,
+    LOOKUPS,
+    PRECEDENCE_KEY,
+    TELCO_CANONICAL,
+    TELCO_PRECEDENCE,
+    TEMPLATES,
+    TRANSFORMS,
+)
 from app.services.artifacts import clone_version, create_artifact, list_versions, publish, update_draft, version_of
 
 SEED_ACTOR = "system:seed"
@@ -30,6 +38,7 @@ def seed_items() -> list[tuple[ArtifactKind, str, str, dict]]:
     items += [(ArtifactKind.LOOKUP, key, name, content) for key, name, content in LOOKUPS]
     items += [(ArtifactKind.TRANSFORM, key, name, content) for key, name, content in TRANSFORMS]
     items += [(ArtifactKind.EVIDENCE_TEMPLATE, key, name, content) for key, name, content in TEMPLATES]
+    items.append((ArtifactKind.PRECEDENCE_POLICY, PRECEDENCE_KEY, "Telco reconciliation precedence", TELCO_PRECEDENCE))
     return items
 
 

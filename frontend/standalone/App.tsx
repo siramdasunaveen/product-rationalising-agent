@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
+import { Navigate, Route, Routes, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
-  AssessmentsScreen, CreateRunScopeScreen, EvidenceHubScreen, MappingRulesScreen, PlaceholderScreen, useManifest,
+  AssessmentsScreen, CreateRunScopeScreen, EvidenceHubScreen, MappingRulesScreen, PlaceholderScreen,
+  ReconciliationScreen, useManifest,
 } from "../src";
 import { tokenStore } from "./auth";
 import { Login } from "./Login";
@@ -45,6 +46,7 @@ function ScreenRoutes() {
       <Route path="/runs/:runId/scope" element={<ScopeRoute />} />
       <Route path="/runs/:runId/evidence" element={<EvidenceRoute />} />
       <Route path="/runs/:runId/evidence/:domain/mapping" element={<MappingRoute />} />
+      <Route path="/runs/:runId/reconciliation" element={<ReconciliationRoute />} />
       <Route
         path="/runs/:runId/scoring"
         element={<PlaceholderScreen title="Scoring & AI Route" note="Wizard step 3 arrives in build step 9." />}
@@ -100,16 +102,26 @@ function EvidenceRoute() {
       onBack={() => navigate(`/runs/${runId}/scope`)}
       onContinue={() => navigate(`/runs/${runId}/scoring`)}
       onExit={() => navigate("/")}
-      onOpenMapping={(domain) => navigate(`/runs/${runId}/evidence/${domain}/mapping`)}
+      onOpenMapping={(domain, sourceId) =>
+        navigate(`/runs/${runId}/evidence/${domain}/mapping${sourceId ? `?source=${sourceId}` : ""}`)}
+      onOpenReconciliation={() => navigate(`/runs/${runId}/reconciliation`)}
     />
   );
 }
 
 function MappingRoute() {
   const { runId, domain } = useParams();
+  const [params] = useSearchParams();
+  const source = params.get("source");
   const navigate = useNavigate();
   return (
-    <MappingRulesScreen key={`${runId}-${domain}`} runId={runId!} domain={domain!}
+    <MappingRulesScreen key={`${runId}-${domain}-${source ?? ""}`} runId={runId!} domain={domain!} sourceId={source}
       onBack={() => navigate(`/runs/${runId}/evidence`)} />
   );
+}
+
+function ReconciliationRoute() {
+  const { runId } = useParams();
+  const navigate = useNavigate();
+  return <ReconciliationScreen key={runId} runId={runId!} onBack={() => navigate(`/runs/${runId}/evidence`)} />;
 }

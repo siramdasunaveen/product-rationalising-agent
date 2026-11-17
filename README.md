@@ -164,6 +164,17 @@ where it came from. You can edit the rules, then:
 
 `python -m app.cli seed-artifacts` also upgrades seed templates it published earlier, as a new minor version.
 
+## Reconcile and approve evidence
+
+From the Evidence Hub, click **Reconcile & approve evidence**. The screen shows the latest successful apply of every
+source. **Reconcile** (worker) combines them field by field using the published precedence policy
+(TELCO-PRECEDENCE): sources that agree keep the value; non-material differences are settled by policy and shown;
+material differences wait in the **conflict queue** for a Data Steward (use a source's value, a manual value with a
+rationale, or defer). **Approve snapshot** freezes the result as SNAP-001, SNAP-002 …: one fact per field with an
+evidence ID (EV-…) and full provenance back to the source file, sheet and row. **Telco graph** walks a product to its
+billing systems, offers, services and aggregates. A domain can have several sources (e.g. two CRM exports); add one
+in the Excel panel and give each sheet a "data as of" date when confirming it.
+
 ## AI
 
 `PRA_AI_PROVIDER=none` (default) runs in no-LLM mode: every AI task uses its deterministic fallback.

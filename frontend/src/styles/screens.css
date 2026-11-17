@@ -370,6 +370,25 @@
 .pra-map__records { margin-top: var(--space-4); }
 .pra-map__records code { font-size: 11px; }
 
+/* ---- Reconciliation (step 6) ---- */
+.pra-sources { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; margin-bottom: var(--space-3); }
+.pra-sources__add { display: inline-flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+.pra-sources__add .pra-input { padding: 6px 8px; font-size: 12px; width: 190px; }
+.pra-recon__list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-3); }
+.pra-recon__item { border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: var(--space-3); }
+.pra-recon__item--open { border-left: 4px solid var(--color-warning); }
+.pra-recon__head { font-size: 13px; display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+.pra-recon__reason { font-size: 12px; margin: var(--space-1) 0 var(--space-2); }
+.pra-recon__decision { font-size: 12px; margin: var(--space-2) 0 0; }
+.pra-recon__manual { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-2); }
+.pra-recon__manual .pra-input { padding: 6px 8px; font-size: 12px; min-width: 220px; }
+.pra-recon__graph { margin-top: var(--space-4); }
+.pra-recon__nodes { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-3); margin-top: var(--space-3); }
+.pra-recon__node { border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: var(--space-3); font-size: 12px; }
+.pra-recon__facts { width: 100%; border-collapse: collapse; margin-top: var(--space-2); }
+.pra-recon__facts td { padding: 3px 6px; border-bottom: 1px solid var(--color-border); vertical-align: top; }
+.pra-recon__ev { font-size: 10px; color: var(--color-text-muted); }
+
 @media (max-width: 900px) {
   .pra-hub { grid-template-columns: 1fr; }
   .pra-hub__arrow { transform: rotate(90deg); }

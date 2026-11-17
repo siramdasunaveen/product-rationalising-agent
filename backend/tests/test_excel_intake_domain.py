@@ -26,9 +26,11 @@ def test_catalog_and_lifecycle_are_always_proposed():
 
 def test_objectives_add_domains_in_screen_order():
     assert propose_domains(["BSS_SUNSET"]) == [D.CRM_CATALOG, D.LIFECYCLE, D.TECHNICAL_CATALOG, D.PROVISIONING,
-                                               D.INVENTORY]
-    assert propose_domains(["IMPROVE_MARGIN", "UNKNOWN"]) == [D.CRM_CATALOG, D.CPQ, D.PRICE_BOOK, D.LIFECYCLE]
-    assert len(propose_domains(["REDUCE_DUPLICATES", "BSS_SUNSET", "IMPROVE_MARGIN"])) == 7
+                                               D.INVENTORY, D.ORDER_BILLING_ASSURANCE, D.CUSTOMER_REVENUE_AGGREGATES]
+    assert propose_domains(["IMPROVE_MARGIN", "UNKNOWN"]) == [D.CRM_CATALOG, D.CPQ, D.PRICE_BOOK, D.LIFECYCLE,
+                                                              D.CUSTOMER_REVENUE_AGGREGATES]
+    assert propose_domains(["PORTFOLIO_STANDARDISATION"]) == [D.CRM_CATALOG, D.CPQ, D.LIFECYCLE, D.TECHNICAL_CATALOG]
+    assert len(propose_domains(["REDUCE_DUPLICATES", "BSS_SUNSET", "IMPROVE_MARGIN"])) == 9
 
 
 def test_proposal_reasons_are_traceable():

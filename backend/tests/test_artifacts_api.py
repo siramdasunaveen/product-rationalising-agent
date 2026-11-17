@@ -276,10 +276,10 @@ def test_content_schema_endpoint(client, h):
 def test_seed_is_published_and_idempotent(client, h, tenant, session_factory, platform):
     with session_factory() as s:
         first = seed_artifacts(s, platform.audit, tenant)
-    assert f"{CANONICAL_KEY}@1.0" in first["created"] and len(first["created"]) == 17
+    assert f"{CANONICAL_KEY}@1.0" in first["created"] and len(first["created"]) == 20
     with session_factory() as s:
         second = seed_artifacts(s, platform.audit, tenant)
-    assert second["created"] == [] and len(second["existing"]) == 17
+    assert second["created"] == [] and len(second["existing"]) == 20
 
     admin = h["agent_admin"]
     ref = client.get(f"{API}/canonical-schemas/resolve", params={"ref": CANONICAL_KEY}, headers=admin).json()

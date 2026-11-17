@@ -111,6 +111,23 @@
 | Apply compatibility | A published mapping can be applied to any confirmed upload of the same source whose schema contains every column the rules use | Adopted |
 | Staged data | Staged records, relationships and field lineage are append-only (database triggers); a new apply creates a new execution | Adopted |
 
+## Step 6: reconciliation and snapshots (developer OK'd 16 Nov 2026; built 17 Nov 2026)
+| Topic | Decision | Status |
+|---|---|---|
+| Sources per domain | Several Excel sources per domain, each with a system code (e.g. SALESFORCE, DYNAMICS). The first upload creates the default "Excel" source; more are added in the Excel panel | Adopted |
+| Data as of | Entered when confirming a sheet (default today, never in the future); freshness is measured from it | Adopted |
+| Freshness limits | Catalog, CPQ 90 days; price book, lifecycle, inventory, order/billing/assurance, customer/revenue 30 days; technical catalog, provisioning 180 days (in TELCO-PRECEDENCE@1.0) | Adopted |
+| Precedence policy | Versioned registry artifact TELCO-PRECEDENCE (kind PRECEDENCE_POLICY): per field (or Entity.*) an ordered list of DOMAIN or DOMAIN:SYSTEM; then freshness; then newer as-of; then source name | Adopted |
+| Material fields | Product name/family/status, lifecycle status and dates, list price and currency, inventory status and count, subscriptions, protected-price contracts, MRR, legacy billing flag, target compatibility. Material conflicts need a Data Steward; other conflicts are settled by policy and shown | Adopted |
+| Decisions | SELECT_SOURCE, MANUAL (typed like the field; rationale required), DEFER (rationale required; field left empty and flagged conflicted; not a blocker). Decisions are append-only and re-applied while the conflicting values are unchanged | Adopted |
+| Snapshot approval | Data Steward (`snapshot.approve`), no separation of duties. Blocked while: material conflicts are open, newer applies exist, a newer reconciliation exists, the run is not configuring, or the reconciliation was already approved | Adopted |
+| Snapshot numbering and evidence ids | SNAP-001 … per run; parent pointer; the previous snapshot becomes SUPERSEDED. Evidence id = "EV-" + 12 hex of SHA-256(entity, key, field, value): unchanged facts keep their id in later snapshots | Adopted |
+| New domains | ORDER_BILLING_ASSURANCE (one row per product + period + billing system) and CUSTOMER_REVENUE_AGGREGATES (one row per product + period), with templates. Proposed by objectives: duplicates → customer/revenue; BSS sunset and migration → both; fallout → order/billing; margin → customer/revenue | Adopted |
+| Minimum group size | Field rule `minCohort` (10 on activeSubscriptions): counts of 1 to 9 are rejected at mapping as a privacy finding | Adopted |
+| Canonical schema 1.1 | Adds CustomerRevenueAggregate, OrderAssuranceAggregate, BillingSystem, BillingDependency and relationship BILLED_BY. Existing tenants are upgraded by the seed; runs pinned to 1.0 keep it | Adopted |
+| Suggestions and data quality | Suggestions only check that a column's type fits a field; value problems (minimum, group size, pattern, length) are left to validation so they are reported, not hidden | Adopted |
+| Template columns feeding several fields | Template columns may list `alsoTargets` (e.g. Product ID feeds the aggregate and the billing dependency); the mapping grid shows the extra rules below the grid | Adopted |
+
 ## Proposed defaults (AI Studio contract not decided yet; confirm with the colleague)
 | Topic | Default | Status |
 |---|---|---|

@@ -134,14 +134,19 @@ def _require_run_editable(run: Run) -> None:
         raise MappingNotEditable(f"Mappings can only be changed while the run is configuring (now {run.state})")
 
 
-def _excel_source(session: Session, run: Run, domain: str) -> EvidenceSource:
+def _excel_source(session: Session, run: Run, domain: str, source_id: uuid.UUID | None = None) -> EvidenceSource:
+    """The chosen source of the domain, or its first Excel source."""
     try:
         d = EvidenceDomain(domain)
     except ValueError as exc:
         raise MappingNotFound(f"Unknown evidence domain {domain}") from exc
-    src = session.scalar(select(EvidenceSource).where(
-        EvidenceSource.run_id == run.id, EvidenceSource.domain == d.value,
-        EvidenceSource.source_type == SourceType.EXCEL_UPLOAD.value))
+    stmt = select(EvidenceSource).where(EvidenceSource.run_id == run.id, EvidenceSource.domain == d.value,
+                                        EvidenceSource.tenant_id == run.tenant_id)
+    stmt = stmt.where(EvidenceSource.id == source_id) if source_id else \
+        stmt.where(EvidenceSource.source_type == SourceType.EXCEL_UPLOAD.value)
+    src = session.scalar(stmt.order_by(EvidenceSource.created_at).limit(1))
+    if src is None and source_id:
+        raise MappingNotFound("Evidence source not found for this domain")
     if src is None:
         raise MappingConflict("Upload a file and confirm its sheet before mapping",
                               [FieldError("domain", "No confirmed source for this domain yet")])
@@ -157,9 +162,14 @@ def get_definition(session: Session, tenant_id: str, run_id: uuid.UUID, mapping_
     return d
 
 
-def definition_for_domain(session: Session, tenant_id: str, run_id: uuid.UUID, domain: str) -> MappingDefinition:
+def definition_for_domain(session: Session, tenant_id: str, run_id: uuid.UUID, domain: str,
+                          source_id: uuid.UUID | None = None) -> MappingDefinition:
+    """The mapping of a source; without source_id, the mapping of the domain's first source."""
+    if source_id is None:
+        run = _run(session, tenant_id, run_id)
+        source_id = _excel_source(session, run, domain).id
     d = session.scalar(select(MappingDefinition).where(MappingDefinition.run_id == run_id,
-                                                       MappingDefinition.domain == domain,
+                                                       MappingDefinition.source_id == source_id,
                                                        MappingDefinition.tenant_id == tenant_id))
     if d is None:
         raise MappingNotFound("No mapping for this domain yet")
@@ -332,10 +342,11 @@ def _prior_rules(session: Session, tenant_id: str, domain: str, fingerprint: str
 
 
 def create_mapping(session: Session, platform: Platform, principal: Principal, run_id: uuid.UUID, domain: str,
-                   schema_version_id: uuid.UUID | None = None) -> tuple[MappingDefinition, MappingVersion]:
+                   schema_version_id: uuid.UUID | None = None,
+                   source_id: uuid.UUID | None = None) -> tuple[MappingDefinition, MappingVersion]:
     run = _run(session, principal.tenant_id, run_id)
     _require_run_editable(run)
-    source = _excel_source(session, run, domain)
+    source = _excel_source(session, run, domain, source_id)
     if EvidenceDomain(domain) not in selected_domains(run):
         raise MappingConflict("This domain is not selected for the run")
     existing = session.scalar(select(MappingDefinition).where(MappingDefinition.source_id == source.id))

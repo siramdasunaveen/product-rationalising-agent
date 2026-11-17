@@ -307,3 +307,11 @@ def test_template_relationships_become_relationship_rules():
 
 def test_norm():
     assert norm("productId") == norm("Product ID") == norm("product_id") == "product id"
+
+
+def test_data_quality_problems_do_not_hide_a_suggestion():
+    """A sample breaking a value rule (too small a group) still gets the right rule; validation reports it."""
+    columns = cols(("Product ID", "string", ["P1"]), ("Active Subscriptions", "integer", ["5"]))
+    rules = suggest(columns, canonical=TELCO_CANONICAL, entities=["CustomerRevenueAggregate"], template=None,
+                    lookups=LK, transforms=TF)
+    assert any(r.target_field == "activeSubscriptions" for r in rules)

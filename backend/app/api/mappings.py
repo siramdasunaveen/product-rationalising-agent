@@ -249,8 +249,10 @@ def _load(db: Session, user: Principal, run_id: uuid.UUID, mapping_id: uuid.UUID
 
 @router.get("/runs/{run_id}/evidence/{domain}/mapping", response_model=MappingVersionOut, responses=ERRORS,
             summary="The mapping of a domain's source (newest version)")
-def get_domain_mapping(run_id: uuid.UUID, domain: str, user: CurrentUser, db: DbDep) -> MappingVersionOut:
-    d = service.definition_for_domain(db, user.tenant_id, run_id, domain)
+def get_domain_mapping(run_id: uuid.UUID, domain: str, user: CurrentUser, db: DbDep,
+                       source_id: Annotated[uuid.UUID | None, Query(description="Default: the first source")] = None
+                       ) -> MappingVersionOut:
+    d = service.definition_for_domain(db, user.tenant_id, run_id, domain, source_id)
     return _version_out(db, d, service.list_versions(db, d)[0])
 
 
@@ -258,8 +260,10 @@ def get_domain_mapping(run_id: uuid.UUID, domain: str, user: CurrentUser, db: Db
              status_code=status.HTTP_201_CREATED, responses=ERRORS,
              summary="Create the mapping (draft v1 with deterministic suggestions)")
 def create_mapping(run_id: uuid.UUID, domain: str, body: CreateIn, user: Mapper, db: DbDep,
-                   platform: PlatformDep) -> MappingVersionOut:
-    d, v = service.create_mapping(db, platform, user, run_id, domain, body.schema_version_id)
+                   platform: PlatformDep,
+                   source_id: Annotated[uuid.UUID | None, Query(description="Default: the first source")] = None
+                   ) -> MappingVersionOut:
+    d, v = service.create_mapping(db, platform, user, run_id, domain, body.schema_version_id, source_id)
     return _version_out(db, d, v)
 
 

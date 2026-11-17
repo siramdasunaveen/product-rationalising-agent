@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import date, datetime
+from typing import Any
 
 from sqlalchemy import (
     BigInteger,
@@ -232,12 +233,15 @@ class EvidenceSource(IdMixin, TenantMixin, CreatedAtMixin, Base):
     """Where a run gets the evidence of one domain from. Excel uploads use one source per run + domain."""
 
     __tablename__ = "evidence_source"
-    __table_args__ = (UniqueConstraint("run_id", "domain", "source_type", name="uq_evidence_source_run_domain_type"),)
+    # Several sources per domain are allowed (e.g. two CRM exports); names are unique within a run's domain.
+    __table_args__ = (UniqueConstraint("run_id", "domain", "name", name="uq_evidence_source_run_domain_name"),)
 
     run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.run.id"), nullable=False, index=True)
     domain: Mapped[str] = mapped_column(String(40), nullable=False)
     source_type: Mapped[str] = mapped_column(String(32), nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
+    # Which system the data comes from (e.g. SALESFORCE, DYNAMICS); precedence may name it as DOMAIN:SYSTEM.
+    system: Mapped[str] = mapped_column(String(40), nullable=False, default="EXCEL")
     created_by: Mapped[str] = mapped_column(String(128), nullable=False)
 
 
@@ -297,6 +301,8 @@ class EvidenceUpload(IdMixin, TenantMixin, CreatedAtMixin, Base):
         ForeignKey(f"{SCHEMA}.source_schema_version.id"), nullable=True)
     confirmed_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The date the data describes ("data as of"), entered when confirming; freshness is measured from it.
+    as_of_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
 
 # ---------------------------------------------------------------------------
@@ -481,3 +487,156 @@ class FieldLineage(TenantMixin, Base):
     crosswalk_ref: Mapped[str | None] = mapped_column(String(80), nullable=True)
     mapping_version_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
     snapshot_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)  # set by step 6 snapshots
+
+
+# ---------------------------------------------------------------------------
+# Reconciliation and evidence snapshots (step 6). The reconciliation tables are the working set (re-built by each
+# reconciliation, updated by Data Steward decisions); decisions and snapshots are immutable (migration 0007).
+# ---------------------------------------------------------------------------
+
+class ReconciliationRun(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    __tablename__ = "reconciliation_run"
+
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.run.id"), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)  # QUEUED | RUNNING | SUCCEEDED | FAILED
+    policy_ref: Mapped[str] = mapped_column(String(80), nullable=False)
+    policy_digest: Mapped[str] = mapped_column(String(71), nullable=False)
+    canonical_ref: Mapped[str] = mapped_column(String(80), nullable=False)
+    reconciled_on: Mapped[date] = mapped_column(Date, nullable=False)  # "today" for freshness
+    inputs: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    counts: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    summary: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # stale, dangling, possible duplicates
+    result_hash: Mapped[str | None] = mapped_column(String(71), nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    job_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    requested_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ReconciledRecord(IdMixin, TenantMixin, Base):
+    __tablename__ = "reconciled_record"
+    __table_args__ = (UniqueConstraint("reconciliation_id", "entity", "record_key", name="uq_reconciled_record_key"),)
+
+    reconciliation_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.reconciliation_run.id"),
+                                                         nullable=False, index=True)
+    entity: Mapped[str] = mapped_column(String(64), nullable=False)
+    record_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    values: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    provenance: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    sources: Mapped[list] = mapped_column(JSONB, nullable=False)
+
+
+class ReconciledRelationship(TenantMixin, Base):
+    __tablename__ = "reconciled_relationship"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    reconciliation_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.reconciliation_run.id"),
+                                                         nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    from_entity: Mapped[str] = mapped_column(String(64), nullable=False)
+    from_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    to_entity: Mapped[str] = mapped_column(String(64), nullable=False)
+    to_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    sources: Mapped[list] = mapped_column(JSONB, nullable=False)
+
+
+class ReconciliationConflict(IdMixin, TenantMixin, Base):
+    __tablename__ = "reconciliation_conflict"
+    __table_args__ = (UniqueConstraint("reconciliation_id", "conflict_key", name="uq_reconciliation_conflict_key"),)
+
+    reconciliation_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.reconciliation_run.id"),
+                                                         nullable=False, index=True)
+    conflict_key: Mapped[str] = mapped_column(String(32), nullable=False)
+    entity: Mapped[str] = mapped_column(String(64), nullable=False)
+    record_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    field: Mapped[str] = mapped_column(String(64), nullable=False)
+    material: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    fingerprint: Mapped[str] = mapped_column(String(32), nullable=False)
+    candidates: Mapped[list] = mapped_column(JSONB, nullable=False)
+    recommended_source_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)  # OPEN | AUTO_RESOLVED | RESOLVED | DEFERRED
+    decision_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+
+
+class StewardDecisionRow(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """A Data Steward's decision on a conflict. Append-only; applies while the conflicting values are unchanged."""
+
+    __tablename__ = "steward_decision"
+    __table_args__ = (Index("ix_steward_decision_conflict", "run_id", "conflict_key", "fingerprint"),)
+
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.run.id"), nullable=False)
+    conflict_key: Mapped[str] = mapped_column(String(32), nullable=False)
+    fingerprint: Mapped[str] = mapped_column(String(32), nullable=False)
+    entity: Mapped[str] = mapped_column(String(64), nullable=False)
+    record_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    field: Mapped[str] = mapped_column(String(64), nullable=False)
+    decision: Mapped[str] = mapped_column(String(16), nullable=False)  # SELECT_SOURCE | MANUAL | DEFER
+    source_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    value: Mapped[Any] = mapped_column(JSONB, nullable=True)
+    rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
+    actor_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    actor_name: Mapped[str] = mapped_column(String(120), nullable=False)
+
+
+class EvidenceSnapshot(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """An approved, immutable evidence snapshot (SNAP-001 ...). Only its status may change (APPROVED -> SUPERSEDED)."""
+
+    __tablename__ = "evidence_snapshot"
+    __table_args__ = (
+        UniqueConstraint("run_id", "snapshot_no", name="uq_evidence_snapshot_number"),
+        Index("uq_evidence_snapshot_current", "run_id", unique=True, postgresql_where=text("status = 'APPROVED'")),
+    )
+
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.run.id"), nullable=False, index=True)
+    snapshot_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    code: Mapped[str] = mapped_column(String(16), nullable=False)
+    parent_snapshot_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey(f"{SCHEMA}.evidence_snapshot.id"),
+                                                                 nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)  # APPROVED | SUPERSEDED
+    reconciliation_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.reconciliation_run.id"),
+                                                         nullable=False)
+    policy_ref: Mapped[str] = mapped_column(String(80), nullable=False)
+    policy_digest: Mapped[str] = mapped_column(String(71), nullable=False)
+    canonical_ref: Mapped[str] = mapped_column(String(80), nullable=False)
+    inputs: Mapped[list] = mapped_column(JSONB, nullable=False)
+    counts: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    approved_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    approved_by_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    approved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class SnapshotFact(TenantMixin, Base):
+    """One canonical field value in a snapshot, with a stable evidence id (EV-...). Append-only."""
+
+    __tablename__ = "snapshot_fact"
+    __table_args__ = (UniqueConstraint("snapshot_id", "evidence_id", name="uq_snapshot_fact_evidence_id"),
+                      Index("ix_snapshot_fact_record", "snapshot_id", "entity", "record_key"))
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.evidence_snapshot.id"), nullable=False)
+    evidence_id: Mapped[str] = mapped_column(String(20), nullable=False)
+    entity: Mapped[str] = mapped_column(String(64), nullable=False)
+    record_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    field: Mapped[str] = mapped_column(String(64), nullable=False)
+    value: Mapped[Any] = mapped_column(JSONB, nullable=True)
+    provenance: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    stale: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    conflicted: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+
+class SnapshotRelationship(TenantMixin, Base):
+    __tablename__ = "snapshot_relationship"
+    __table_args__ = (Index("ix_snapshot_relationship_from", "snapshot_id", "from_entity", "from_key"),
+                      Index("ix_snapshot_relationship_to", "snapshot_id", "to_entity", "to_key"))
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.evidence_snapshot.id"), nullable=False)
+    evidence_id: Mapped[str] = mapped_column(String(20), nullable=False)
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    from_entity: Mapped[str] = mapped_column(String(64), nullable=False)
+    from_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    to_entity: Mapped[str] = mapped_column(String(64), nullable=False)
+    to_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    sources: Mapped[list] = mapped_column(JSONB, nullable=False)

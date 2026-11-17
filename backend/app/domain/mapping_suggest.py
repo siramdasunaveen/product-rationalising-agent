@@ -102,23 +102,31 @@ def _transform_for(fdef: dict, samples: list[str], transforms: dict[str, tuple[s
         if not samples:
             continue
         try:
-            for s in samples:
-                coerce(apply_transform(content, s), fdef)
-        except (TransformError, MappingValueError):
+            if not all(_fits(apply_transform(content, s), fdef) for s in samples):
+                continue
+        except TransformError:
             continue
         return ref
     return None
 
 
+# Codes that mean "the value is the wrong kind for this field". Other problems (below a minimum, too small a
+# group, too long, pattern) are data-quality findings: the rule is still right and validation reports them.
+TYPE_CODES = {"TYPE_MISMATCH", "NOT_ALLOWED"}
+
+
+def _fits(value, fdef: dict) -> bool:
+    try:
+        coerce(value, fdef)
+    except MappingValueError as exc:
+        return exc.code not in TYPE_CODES
+    return True
+
+
 def _direct_fits(col: dict, fdef: dict) -> bool:
     if fdef["type"] not in DIRECT_COMPAT.get(col["type"], set()):
         return False
-    try:
-        for s in _samples(col):
-            coerce(s, fdef)
-    except MappingValueError:
-        return False
-    return True
+    return all(_fits(s, fdef) for s in _samples(col))
 
 
 def choose_rule(key: str, col: dict, entity: str, field: str, canonical: dict, how: ProposedBy, *,
@@ -198,6 +206,16 @@ def suggest(columns: list[dict[str, Any]], *, canonical: dict, entities: list[st
             n += 1
             rules.append(rule)
             taken.add((candidate[0], candidate[1]))
+            # a template column may feed further fields (e.g. Product ID of an aggregate and of a dependency)
+            for extra in (tc or {}).get("alsoTargets", []):
+                if (extra["entity"], extra["field"]) in taken:
+                    continue
+                more = choose_rule(f"R{n + 1}", col, extra["entity"], extra["field"], canonical, ProposedBy.TEMPLATE,
+                                   lookups=lookups, transforms=transforms, required=required)
+                if more is not None:
+                    n += 1
+                    rules.append(more)
+                    taken.add((extra["entity"], extra["field"]))
 
     for rel in (template or {}).get("relationships", []):
         cols = [rel["fromColumn"], rel["toColumn"]] + ([rel["nameColumn"]] if rel.get("nameColumn") else [])

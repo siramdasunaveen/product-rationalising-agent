@@ -12,9 +12,10 @@ Upload flow (CLAUDE.md rule 12):
 """
 
 import hashlib
+import re
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import func, select
@@ -79,6 +80,11 @@ class EvidenceNotEditable(EvidenceError):
 class EvidenceVersionConflict(EvidenceError):
     status_code = 409
     code = "version_conflict"
+
+
+class EvidenceNameTaken(EvidenceError):
+    status_code = 409
+    code = "name_taken"
 
 
 class DomainNotSelected(EvidenceError):
@@ -175,6 +181,7 @@ class DomainView:
     status: DomainStatus
     uploads: list[EvidenceUpload]
     template_ref: str | None
+    sources: list[EvidenceSource]
 
 
 @dataclass
@@ -203,7 +210,7 @@ def overview(session: Session, tenant_id: str, run_id: uuid.UUID) -> EvidenceOve
         views.append(DomainView(
             domain=d, selected=d in selected, proposed=d in proposed, reasons=reasons.get(d, []),
             status=domain_status([(u.status, u.schema_version_id is not None) for u in ups]),
-            uploads=ups, template_ref=tpl[0] if tpl else None))
+            uploads=ups, template_ref=tpl[0] if tpl else None, sources=sources_of(session, run, d)))
     return EvidenceOverview(run=run, selection_confirmed=run.evidence_domains is not None,
                             editable=run.state in EDITABLE_STATES, domains=views)
 
@@ -241,16 +248,63 @@ def set_domains(session: Session, audit: AuditLog, principal: Principal, run_id:
 # Upload intake
 # ---------------------------------------------------------------------------
 
-def _excel_source(session: Session, principal: Principal, run: Run, domain: EvidenceDomain) -> EvidenceSource:
-    src = session.scalar(select(EvidenceSource).where(
-        EvidenceSource.run_id == run.id, EvidenceSource.domain == domain.value,
-        EvidenceSource.source_type == SourceType.EXCEL_UPLOAD.value))
+def sources_of(session: Session, run: Run, domain: EvidenceDomain) -> list[EvidenceSource]:
+    return list(session.scalars(select(EvidenceSource).where(
+        EvidenceSource.run_id == run.id, EvidenceSource.tenant_id == run.tenant_id,
+        EvidenceSource.domain == domain.value).order_by(EvidenceSource.created_at, EvidenceSource.name)))
+
+
+def _excel_source(session: Session, principal: Principal, run: Run, domain: EvidenceDomain,
+                  source_id: uuid.UUID | None = None) -> EvidenceSource:
+    """The chosen source, or the domain's first Excel source (created on first use)."""
+    if source_id is not None:
+        src = session.scalar(select(EvidenceSource).where(
+            EvidenceSource.id == source_id, EvidenceSource.run_id == run.id, EvidenceSource.domain == domain.value,
+            EvidenceSource.tenant_id == run.tenant_id))
+        if src is None:
+            raise EvidenceNotFound("Evidence source not found for this domain")
+        return src
+    src = next((x for x in sources_of(session, run, domain) if x.source_type == SourceType.EXCEL_UPLOAD.value), None)
     if src is None:
         src = EvidenceSource(tenant_id=run.tenant_id, run_id=run.id, domain=domain.value,
                              source_type=SourceType.EXCEL_UPLOAD.value, name=f"Excel · {DOMAINS[domain].label}",
-                             created_by=principal.user_id)
+                             created_by=principal.user_id, created_at=datetime.now(UTC))
         session.add(src)
         session.flush()
+    return src
+
+
+SYSTEM_RE = re.compile(r"^[A-Z][A-Z0-9_]{1,39}$")
+
+
+def add_source(session: Session, audit: AuditLog, principal: Principal, run_id: uuid.UUID, domain_value: str,
+               name: str, system: str) -> EvidenceSource:
+    """Another Excel source for a domain, e.g. a second CRM export from another system."""
+    domain = _domain(domain_value)
+    run = _run(session, principal.tenant_id, run_id)
+    _require_editable(run)
+    if domain not in selected_domains(run):
+        raise DomainNotSelected(f"{DOMAINS[domain].label} is not selected for this run")
+    name = " ".join((name or "").split())
+    system = (system or "").strip().upper()
+    errors = []
+    if not 3 <= len(name) <= 120:
+        errors.append(FieldError("name", "Name must be 3-120 characters"))
+    if not SYSTEM_RE.match(system):
+        errors.append(FieldError("system", "System code: upper-case letters, digits and _ (e.g. SALESFORCE)"))
+    if errors:
+        raise EvidenceValidationError("The source is not valid", errors)
+    _excel_source(session, principal, run, domain)  # make sure the default source exists first
+    if any(x.name.casefold() == name.casefold() for x in sources_of(session, run, domain)):
+        raise EvidenceNameTaken("A source with this name already exists", [FieldError("name", "Name in use")])
+    src = EvidenceSource(tenant_id=run.tenant_id, run_id=run.id, domain=domain.value,
+                         source_type=SourceType.EXCEL_UPLOAD.value, name=name, system=system,
+                         created_by=principal.user_id, created_at=datetime.now(UTC))
+    session.add(src)
+    session.flush()
+    _audit(audit, session, principal, "evidence.source_added", "evidence_source", str(src.id),
+           {"run_id": str(run.id), "domain": domain.value, "name": name, "system": system})
+    session.commit()
     return src
 
 
@@ -265,7 +319,8 @@ class UploadResult:
 
 
 def upload_file(session: Session, platform: Platform, limits: FileLimits, principal: Principal,
-                run_id: uuid.UUID, domain_value: str, filename: str, data: bytes) -> UploadResult:
+                run_id: uuid.UUID, domain_value: str, filename: str, data: bytes,
+                source_id: uuid.UUID | None = None) -> UploadResult:
     domain = _domain(domain_value)
     run = _run(session, principal.tenant_id, run_id)
     _require_editable(run)
@@ -283,7 +338,7 @@ def upload_file(session: Session, platform: Platform, limits: FileLimits, princi
         raise EvidenceFileRejected("The file was not accepted",
                                    [FieldError("file", p.message) for p in problems])
 
-    source = _excel_source(session, principal, run, domain)
+    source = _excel_source(session, principal, run, domain, source_id)
     existing = session.scalar(select(EvidenceUpload).where(
         EvidenceUpload.source_id == source.id, EvidenceUpload.sha256 == digest,
         EvidenceUpload.status != UploadStatus.REJECTED.value))
@@ -442,9 +497,14 @@ class ConfirmResult:
 
 
 def confirm_schema(session: Session, platform: Platform, limits: FileLimits, principal: Principal,
-                   run_id: uuid.UUID, upload_id: uuid.UUID, sheet: str, header_row: int) -> ConfirmResult:
+                   run_id: uuid.UUID, upload_id: uuid.UUID, sheet: str, header_row: int,
+                   as_of: date | None = None) -> ConfirmResult:
     run = _run(session, principal.tenant_id, run_id)
     _require_editable(run)
+    as_of = as_of or datetime.now(UTC).date()
+    if as_of > datetime.now(UTC).date():
+        raise EvidenceValidationError("The data cannot be from the future",
+                                      [FieldError("as_of", "Choose today or an earlier date")])
     upload = get_upload(session, principal.tenant_id, run_id, upload_id, for_update=True)
     info = _sheet(session, platform, limits, upload, sheet, header_row)
     if info["problems"]:
@@ -487,6 +547,7 @@ def confirm_schema(session: Session, platform: Platform, limits: FileLimits, pri
     upload.schema_version_id = existing.id
     upload.confirmed_by = principal.user_id
     upload.confirmed_at = datetime.now(UTC)
+    upload.as_of_date = as_of
     session.flush()
     _audit(platform.audit, session, principal, "evidence.schema_confirmed", "evidence_upload", str(upload.id),
            _upload_payload(upload) | {"sheet": sheet, "header_row": info["header_row"],

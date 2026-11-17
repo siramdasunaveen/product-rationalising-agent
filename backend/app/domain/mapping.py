@@ -262,6 +262,9 @@ def coerce(raw: Any, fdef: dict) -> Any:
             raise MappingValueError("TYPE_MISMATCH", f"{as_text(raw)!r} is not a whole number")
         if "minimum" in fdef and v < fdef["minimum"]:
             raise MappingValueError("BELOW_MINIMUM", f"{v} is below {fdef['minimum']}")
+        if "minCohort" in fdef and 0 < v < fdef["minCohort"]:
+            raise MappingValueError("BELOW_MIN_COHORT", f"{v} is below the minimum group size {fdef['minCohort']}"
+                                    " (privacy: aggregates only)")
         return v
     if t == "decimal":
         if isinstance(raw, bool):
@@ -865,6 +868,7 @@ DATA_ISSUES: dict[str, tuple[Layer, str]] = {
     "TOO_LONG": (Layer.TYPE, "Values are too long"),
     "PATTERN": (Layer.TYPE, "Values do not match the field pattern"),
     "BELOW_MINIMUM": (Layer.TYPE, "Values are below the minimum"),
+    "BELOW_MIN_COHORT": (Layer.SECURITY, "Counts describe too small a group (privacy)"),
 }
 
 

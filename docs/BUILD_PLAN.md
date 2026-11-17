@@ -47,7 +47,7 @@ field specification were supplied; revised again the same day after the 5 candid
   field/relationship lineage.
 - Done when: replaying the same file with the same mapping version reproduces identical staged values and lineage.
 
-## Step 6: Reconciliation, snapshot, Telco graph · TODO
+## Step 6: Reconciliation, snapshot, Telco graph · DONE
 - Canonical tables (products, offers/bundles, CPQ rules, price books, lifecycle, CFS/RFS, resources,
   provisioning, inventory aggregates, relationships).
 - Aggregate evidence needed by the candidate guides: TELCO-CANONICAL@1.1 adds customer/revenue aggregates

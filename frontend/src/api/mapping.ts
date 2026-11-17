@@ -115,12 +115,14 @@ const POLL_MS = 1500;
 const vKey = (runId: string, mappingId: string, version: number) => ["mapping", runId, mappingId, version] as const;
 
 /** The domain's mapping (newest version), or null when none exists yet. */
-export const useDomainMapping = (runId: string, domain: string) =>
+const srcQ = (sourceId?: string | null) => (sourceId ? `?source_id=${sourceId}` : "");
+
+export const useDomainMapping = (runId: string, domain: string, sourceId?: string | null) =>
   useQuery({
-    queryKey: ["mapping", runId, "domain", domain],
+    queryKey: ["mapping", runId, "domain", domain, sourceId ?? ""],
     queryFn: async () => {
       try {
-        return await apiFetch<MappingVersion>(`/runs/${runId}/evidence/${domain}/mapping`);
+        return await apiFetch<MappingVersion>(`/runs/${runId}/evidence/${domain}/mapping${srcQ(sourceId)}`);
       } catch (e) {
         if (e instanceof ApiError && e.status === 404) return null;
         throw e;
@@ -157,8 +159,8 @@ const base = (m: { run_id: string; mapping_id: string; version: number }) =>
   `/runs/${m.run_id}/mappings/${m.mapping_id}/versions/${m.version}`;
 const post = <T,>(path: string, body: unknown = {}) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
 
-export const useCreateMapping = (runId: string, domain: string) =>
-  useMappingMutation(runId, () => post<MappingVersion>(`/runs/${runId}/evidence/${domain}/mapping`));
+export const useCreateMapping = (runId: string, domain: string, sourceId?: string | null) =>
+  useMappingMutation(runId, () => post<MappingVersion>(`/runs/${runId}/evidence/${domain}/mapping${srcQ(sourceId)}`));
 
 export const useSaveDraft = (runId: string) =>
   useMappingMutation(runId, (a: { m: MappingVersion; rules: Rule[] }) =>

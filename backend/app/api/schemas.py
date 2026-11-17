@@ -351,6 +351,8 @@ class SourceSchemaOut(BaseModel):
 class UploadSummary(BaseModel):
     id: uuid.UUID
     domain: str
+    source_id: uuid.UUID
+    as_of_date: date | None = Field(description="The date the data describes (entered when confirming)")
     filename: str
     size_bytes: int
     status: str = Field(description="PROCESSING | READY | REJECTED")
@@ -373,6 +375,18 @@ class UploadOut(UploadSummary):
     model_config = {"populate_by_name": True}
 
 
+class EvidenceSourceOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    system: str = Field(description="Source system code, e.g. SALESFORCE; precedence may use DOMAIN:SYSTEM")
+    source_type: str
+
+
+class EvidenceSourceIn(BaseModel):
+    name: str = Field(max_length=120, examples=["Dynamics CRM export"])
+    system: str = Field(max_length=40, examples=["DYNAMICS"])
+
+
 class EvidenceDomainOut(BaseModel):
     key: str
     label: str
@@ -384,6 +398,7 @@ class EvidenceDomainOut(BaseModel):
     status: str = Field(description="NO_SOURCE | CHECKING | NEEDS_CONFIRMATION | READY | REJECTED")
     template_ref: str | None
     source_types: list[SourceTypeOut]
+    sources: list[EvidenceSourceOut]
     uploads: list[UploadSummary]
 
 
@@ -410,3 +425,4 @@ class SheetChoiceIn(BaseModel):
 class SheetConfirmIn(BaseModel):
     sheet: str = Field(max_length=64)
     header_row: int = Field(ge=1, le=50)
+    as_of: date | None = Field(default=None, description="Data as of (default today); freshness is measured from it")

@@ -37,6 +37,10 @@ ROWS = {
                      "Target System": "Orchestrator"},
     "INVENTORY": {"Service Instance Aggregate Key": "AGG-1", "Service Spec ID": "CFS-1", "Resource Spec ID": "RS-1",
                   "Status": "ACTIVE", "Active Count": 1200},
+    "ORDER_BILLING_ASSURANCE": {"Product ID": "PRD-1", "Period Start": "2026-10-01", "Period End": "2026-10-31",
+                                "Orders": 5200, "Fallout Orders": 437, "Billing System ID": "BILL-A"},
+    "CUSTOMER_REVENUE_AGGREGATES": {"Product ID": "PRD-1", "Period Start": "2026-10-01", "Period End": "2026-10-31",
+                                    "Active Subscriptions": 86214, "MRR": 480000, "Currency": "GBP"},
 }
 
 
@@ -92,8 +96,9 @@ def test_overview_proposes_domains_from_objectives(client, env):
     ov = client.get(ev(env), headers=env["pm"]).json()
     assert ov["selection_confirmed"] is False and ov["editable"] is True
     selected = [d["key"] for d in ov["domains"] if d["selected"]]
-    assert selected == ["CRM_CATALOG", "LIFECYCLE", "TECHNICAL_CATALOG", "PROVISIONING", "INVENTORY"]
-    assert len(ov["domains"]) == 7 and all(d["status"] == "NO_SOURCE" for d in ov["domains"])
+    assert selected == ["CRM_CATALOG", "LIFECYCLE", "TECHNICAL_CATALOG", "PROVISIONING", "INVENTORY",
+                        "ORDER_BILLING_ASSURANCE", "CUSTOMER_REVENUE_AGGREGATES"]
+    assert len(ov["domains"]) == 9 and all(d["status"] == "NO_SOURCE" for d in ov["domains"])
     tech = next(d for d in ov["domains"] if d["key"] == "TECHNICAL_CATALOG")
     assert tech["proposal_reasons"] == ["Objective BSS_SUNSET"] and tech["template_ref"] == "TPL-TECHNICAL-CATALOG@1.0"
     available = {t["type"]: t["available"] for t in tech["source_types"]}

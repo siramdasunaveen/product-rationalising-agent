@@ -6,6 +6,8 @@ export type Problem = { code: string; message: string };
 export type UploadSummary = {
   id: string;
   domain: string;
+  source_id: string;
+  as_of_date: string | null;
   filename: string;
   size_bytes: number;
   status: "PROCESSING" | "READY" | "REJECTED";
@@ -76,8 +78,11 @@ export type EvidenceDomain = {
   status: DomainStatus;
   template_ref: string | null;
   source_types: { type: string; label: string; available: boolean }[];
+  sources: EvidenceSource[];
   uploads: UploadSummary[];
 };
+
+export type EvidenceSource = { id: string; name: string; system: string; source_type: string };
 
 export type EvidenceOverview = {
   run_id: string;
@@ -124,10 +129,11 @@ export function useSetDomains(runId: string) {
 export function useUploadFile(runId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ domain, file }: { domain: string; file: File }) => {
+    mutationFn: ({ domain, file, sourceId }: { domain: string; file: File; sourceId?: string | null }) => {
       const body = new FormData();
       body.append("file", file);
-      return apiFetch<UploadDetail>(`/runs/${runId}/evidence/${domain}/uploads`, { method: "POST", body });
+      const q = sourceId ? `?source_id=${sourceId}` : "";
+      return apiFetch<UploadDetail>(`/runs/${runId}/evidence/${domain}/uploads${q}`, { method: "POST", body });
     },
     onSettled: () => qc.invalidateQueries({ queryKey: key(runId) }),
   });
@@ -145,10 +151,10 @@ export const usePreviewSheet = (runId: string) =>
 export function useConfirmSheet(runId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (a: { uploadId: string; sheet: string; header_row: number }) =>
+    mutationFn: (a: { uploadId: string; sheet: string; header_row: number; as_of?: string | null }) =>
       apiFetch<UploadDetail>(`/runs/${runId}/evidence/uploads/${a.uploadId}/confirm`, {
         method: "POST",
-        body: JSON.stringify({ sheet: a.sheet, header_row: a.header_row }),
+        body: JSON.stringify({ sheet: a.sheet, header_row: a.header_row, as_of: a.as_of || null }),
       }),
     onSuccess: (u) => {
       qc.setQueryData(["evidence", runId, "upload", u.id], u);
@@ -168,4 +174,16 @@ export async function downloadTemplate(domain: string): Promise<void> {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+export function useAddSource(runId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (a: { domain: string; name: string; system: string }) =>
+      apiFetch<EvidenceSource>(`/runs/${runId}/evidence/${a.domain}/sources`, {
+        method: "POST",
+        body: JSON.stringify({ name: a.name, system: a.system }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: key(runId) }),
+  });
 }

@@ -3,7 +3,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Request, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Query, Request, Response, UploadFile, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbDep, PlatformDep, require_permission
@@ -13,6 +13,8 @@ from app.api.schemas import (
     EvidenceDomainInfo,
     EvidenceDomainOut,
     EvidenceOverviewOut,
+    EvidenceSourceIn,
+    EvidenceSourceOut,
     ProblemOut,
     SheetChoiceIn,
     SheetConfirmIn,
@@ -54,7 +56,8 @@ def _limits(request: Request) -> FileLimits:
 
 def _summary(u: EvidenceUpload, schema: SourceSchemaVersion | None = None) -> UploadSummary:
     return UploadSummary(
-        id=u.id, domain=u.domain, filename=u.filename, size_bytes=u.size_bytes, status=u.status,
+        id=u.id, domain=u.domain, source_id=u.source_id, as_of_date=u.as_of_date, filename=u.filename,
+        size_bytes=u.size_bytes, status=u.status,
         reasons=[ProblemOut(**r) for r in u.reasons], uploaded_by_name=u.uploaded_by_name, uploaded_at=u.created_at,
         processed_at=u.processed_at, default_sheet=(u.discovery or {}).get("default_sheet"),
         schema_version=schema.version if schema else None, confirmed_at=u.confirmed_at)
@@ -84,6 +87,8 @@ def _overview_out(db, ov: service.EvidenceOverview) -> EvidenceOverviewOut:
             proposal_reasons=d.reasons, status=d.status.value, template_ref=d.template_ref,
             source_types=[SourceTypeOut(type=t.value, label=SOURCE_TYPE_LABELS[t], available=t in AVAILABLE_SOURCE_TYPES)
                           for t in SourceType],
+            sources=[EvidenceSourceOut(id=s.id, name=s.name, system=s.system, source_type=s.source_type)
+                     for s in d.sources],
             uploads=[_summary(u, versions.get(u.schema_version_id)) for u in d.uploads])
             for d in ov.domains])
 
@@ -122,16 +127,27 @@ def set_domains(run_id: uuid.UUID, body: DomainSelectionIn, user: RunEditor, db:
     return _overview_out(db, service.overview(db, user.tenant_id, run_id))
 
 
+@router.post("/runs/{run_id}/evidence/{domain}/sources", response_model=EvidenceSourceOut,
+             status_code=status.HTTP_201_CREATED, responses=ERRORS,
+             summary="Add another Excel source to a domain (e.g. a second CRM export from another system)")
+def add_source(run_id: uuid.UUID, domain: str, body: EvidenceSourceIn, user: Uploader, db: DbDep,
+               platform: PlatformDep) -> EvidenceSourceOut:
+    s = service.add_source(db, platform.audit, user, run_id, domain, body.name, body.system)
+    return EvidenceSourceOut(id=s.id, name=s.name, system=s.system, source_type=s.source_type)
+
+
 @router.post("/runs/{run_id}/evidence/{domain}/uploads", response_model=UploadOut,
              status_code=status.HTTP_202_ACCEPTED,
              responses={200: {"model": UploadOut, "description": "Same file already uploaded (duplicate=true)"},
                         **ERRORS},
              summary="Upload an .xlsx file; it is quarantined, scanned and read in the background")
 def upload(run_id: uuid.UUID, domain: str, request: Request, response: Response, user: Uploader, db: DbDep,
-           platform: PlatformDep, file: Annotated[UploadFile, File(description=".xlsx workbook")]) -> UploadOut:
+           platform: PlatformDep, file: Annotated[UploadFile, File(description=".xlsx workbook")],
+           source_id: Annotated[uuid.UUID | None, Query(description="Source to upload to (default: the domain's "
+                                                                   "first Excel source)")] = None) -> UploadOut:
     limits = _limits(request)
     data = file.file.read(limits.max_bytes + 1)  # never read more than the limit + 1 byte
-    result = service.upload_file(db, platform, limits, user, run_id, domain, file.filename or "", data)
+    result = service.upload_file(db, platform, limits, user, run_id, domain, file.filename or "", data, source_id)
     if result.duplicate:
         response.status_code = status.HTTP_200_OK
     return _upload_out(db, result.upload, duplicate=result.duplicate)
@@ -156,5 +172,5 @@ def preview(run_id: uuid.UUID, upload_id: uuid.UUID, body: SheetChoiceIn, reques
 def confirm(run_id: uuid.UUID, upload_id: uuid.UUID, body: SheetConfirmIn, request: Request, user: Uploader,
             db: DbDep, platform: PlatformDep) -> UploadOut:
     result = service.confirm_schema(db, platform, _limits(request), user, run_id, upload_id, body.sheet,
-                                    body.header_row)
+                                    body.header_row, body.as_of)
     return _upload_out(db, result.upload)

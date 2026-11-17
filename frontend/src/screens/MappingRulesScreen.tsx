@@ -44,9 +44,11 @@ const errText = (e: unknown) =>
   e instanceof ApiError ? [e.message, ...e.fieldErrors.map((f) => f.message)].join(" ") : "Something went wrong.";
 
 /** Mapping Rules (step 5): map a confirmed source to the canonical schema, validate, review, publish, apply. */
-export function MappingRulesScreen({ runId, domain, onBack }: { runId: string; domain: string; onBack: () => void }) {
-  const head = useDomainMapping(runId, domain);
-  const create = useCreateMapping(runId, domain);
+export function MappingRulesScreen({ runId, domain, sourceId, onBack }: {
+  runId: string; domain: string; sourceId?: string | null; onBack: () => void;
+}) {
+  const head = useDomainMapping(runId, domain, sourceId);
+  const create = useCreateMapping(runId, domain, sourceId);
   const { has } = usePermissions();
   const [version, setVersion] = useState<number | undefined>();
   const [error, setError] = useState<string | null>(null);
@@ -135,17 +137,25 @@ function MappingVersionView({ m, onVersion, onError }: {
     }
   };
 
+  // The grid shows one rule per column; a column feeding further fields (e.g. Product ID of an aggregate and of
+  // a billing dependency) lists its extra rules below with relationship and derived rules.
   const byColumn = useMemo(() => {
     const out: Record<string, Rule> = {};
-    for (const r of rules) if (r.source_column && r.mapping_type !== "RELATIONSHIP" && r.mapping_type !== "DERIVED") out[r.source_column] = r;
+    for (const r of rules) {
+      if (r.source_column && r.mapping_type !== "RELATIONSHIP" && r.mapping_type !== "DERIVED" && !out[r.source_column]) {
+        out[r.source_column] = r;
+      }
+    }
     return out;
   }, [rules]);
-  const otherRules = rules.filter((r) => r.mapping_type === "RELATIONSHIP" || r.mapping_type === "DERIVED");
+  const primaryKeys = new Set(Object.values(byColumn).map((r) => r.key));
+  const otherRules = rules.filter((r) => !primaryKeys.has(r.key));
 
   const nextKey = () => `R${Math.max(0, ...rules.map((r) => Number(r.key.slice(1)) || 0)) + 1}`;
   const setColumnRule = (column: string, rule: Rule | null) =>
     setRules((prev) => {
-      const rest = prev.filter((r) => !(r.source_column === column && r.mapping_type !== "RELATIONSHIP" && r.mapping_type !== "DERIVED"));
+      const current = byColumn[column];
+      const rest = current ? prev.filter((r) => r.key !== current.key) : prev;
       return rule ? [...rest, rule] : rest;
     });
 
@@ -231,14 +241,16 @@ function MappingVersionView({ m, onVersion, onError }: {
         </div>
         {otherRules.length > 0 && (
           <>
-            <h3 className="pra-map__sub">Relationship and derived rules</h3>
+            <h3 className="pra-map__sub">Relationship, derived and additional rules</h3>
             <ul className="pra-map__other">
               {otherRules.map((r) => (
                 <li key={r.key}>
                   <code>{r.key}</code>{" "}
                   {r.mapping_type === "RELATIONSHIP" && r.relationship
                     ? <>{r.relationship.fromEntity} ({r.relationship.fromColumn}) — <strong>{r.relationship.name ?? `name from “${r.relationship.nameColumn}”`}</strong> → {r.relationship.toEntity} ({r.relationship.toColumn})</>
-                    : <>{r.target_entity}.{r.target_field} = {r.derived?.op}({(r.derived?.inputs ?? [r.derived?.value]).join(", ")})</>}
+                    : r.mapping_type === "DERIVED"
+                      ? <>{r.target_entity}.{r.target_field} = {r.derived?.op}({(r.derived?.inputs ?? [r.derived?.value]).join(", ")})</>
+                      : <>{r.source_column} → {r.target_entity}.{r.target_field} ({r.mapping_type.toLowerCase()})</>}
                   <span className="pra-map__by">{BY_LABEL[r.proposed_by]}</span>
                   {editable && (
                     <button type="button" className="pra-link" onClick={() => setRules((p) => p.filter((x) => x.key !== r.key))}>Remove</button>

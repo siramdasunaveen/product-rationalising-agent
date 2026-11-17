@@ -49,6 +49,8 @@ FIELD_SCHEMA = {
         "pattern": {"type": "string", "minLength": 1, "maxLength": 200},
         "maxLength": {"type": "integer", "minimum": 1, "maximum": 100000},
         "minimum": {"type": "integer"},
+        # Aggregates: a positive count below this is too small a group and is rejected (privacy).
+        "minCohort": {"type": "integer", "minimum": 2, "maximum": 1000},
         "pii": {"type": "boolean"},
     },
 }
@@ -127,6 +129,8 @@ def _check_field(f: dict, path: str, entity_names: set[str]) -> list[FieldError]
             errors.append(FieldError(f"{path}.pattern", f"Not a valid pattern: {exc}"))
     if "minimum" in f and ftype not in ("integer", "decimal"):
         errors.append(FieldError(f"{path}.minimum", "minimum applies to integer and decimal fields only"))
+    if "minCohort" in f and ftype != "integer":
+        errors.append(FieldError(f"{path}.minCohort", "minCohort applies to integer count fields only"))
     if f.get("pii"):
         errors.append(FieldError(f"{path}.pii", PII_MESSAGE))
     return errors
@@ -390,6 +394,11 @@ EVIDENCE_TEMPLATE_JSON = {
                         "additionalProperties": False,
                         "properties": {"entity": ENTITY_NAME, "field": FIELD_NAME},
                     },
+                    "alsoTargets": {
+                        "type": "array", "maxItems": 5,
+                        "items": {"type": "object", "required": ["entity", "field"], "additionalProperties": False,
+                                  "properties": {"entity": ENTITY_NAME, "field": FIELD_NAME}},
+                    },
                     "lookup": ARTIFACT_KEY,
                     "description": {"type": "string", "maxLength": 500},
                     "example": {"type": "string", "maxLength": 100},
@@ -451,12 +460,84 @@ def check_evidence_template_against(content: dict, canonical: dict) -> list[Fiel
                 errors.append(FieldError(f"columns[{i}].target.entity", f"Entity {t['entity']} is not in the schema"))
             elif find_field(canonical, t["entity"], t["field"]) is None:
                 errors.append(FieldError(f"columns[{i}].target.field", f"Field {t['field']} is not in {t['entity']}"))
+        for j, t in enumerate(col.get("alsoTargets", [])):
+            if find_field(canonical, t["entity"], t["field"]) is None:
+                errors.append(FieldError(f"columns[{i}].alsoTargets[{j}]",
+                                         f"{t['entity']}.{t['field']} is not in the schema"))
     for i, rel in enumerate(content.get("relationships", [])):
         for side in ("fromEntity", "toEntity"):
             if not has_entity(canonical, rel[side]):
                 errors.append(FieldError(f"relationships[{i}].{side}", f"Entity {rel[side]} is not in the schema"))
         if rel.get("name") and rel["name"] not in rel_names:
             errors.append(FieldError(f"relationships[{i}].name", f"Relationship {rel['name']} is not in the schema"))
+    return errors
+
+
+# ---------------------------------------------------------------------------
+# Precedence policy (reconciliation, step 6)
+# ---------------------------------------------------------------------------
+
+FIELD_SELECTOR = {"type": "string", "pattern": r"^[A-Z][A-Za-z0-9]*\.([a-z][A-Za-z0-9]*|\*)$", "maxLength": 130}
+SOURCE_TOKEN = {"type": "string", "pattern": r"^[A-Z][A-Z0-9_]*(:[A-Z][A-Z0-9_]*)?$", "maxLength": 130}
+
+PRECEDENCE_POLICY_JSON = {
+    "type": "object",
+    "required": ["canonicalSchema", "precedence", "materialFields"],
+    "additionalProperties": False,
+    "properties": {
+        "description": DESCRIPTION,
+        "canonicalSchema": ARTIFACT_KEY,
+        "defaultFreshnessDays": {"type": "integer", "minimum": 1, "maximum": 3650},
+        "freshnessDays": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 1,
+                                                                      "maximum": 3650}},
+        "precedence": {
+            "type": "array", "maxItems": 500,
+            "items": {"type": "object", "required": ["field", "order"], "additionalProperties": False,
+                      "properties": {"field": FIELD_SELECTOR,
+                                     "order": {"type": "array", "items": SOURCE_TOKEN, "minItems": 1,
+                                               "maxItems": 20, "uniqueItems": True}}},
+        },
+        "materialFields": {"type": "array", "items": FIELD_SELECTOR, "maxItems": 1000, "uniqueItems": True},
+    },
+}
+
+
+def check_precedence_policy(content: dict) -> list[FieldError]:
+    from app.domain.evidence import EvidenceDomain  # local import: evidence imports runs only
+
+    known = {d.value for d in EvidenceDomain}
+    errors: list[FieldError] = []
+    for d in content.get("freshnessDays", {}):
+        if d not in known:
+            errors.append(FieldError(f"freshnessDays.{d}", f"Unknown evidence domain {d}"))
+    seen: set[str] = set()
+    for i, p in enumerate(content["precedence"]):
+        if p["field"] in seen:
+            errors.append(FieldError(f"precedence[{i}].field", f"{p['field']} is listed twice"))
+        seen.add(p["field"])
+        for j, token in enumerate(p["order"]):
+            if token.split(":")[0] not in known:
+                errors.append(FieldError(f"precedence[{i}].order[{j}]", f"Unknown evidence domain in {token}"))
+    return errors
+
+
+def check_precedence_policy_against(content: dict, canonical: dict) -> list[FieldError]:
+    errors: list[FieldError] = []
+
+    def check(path: str, selector: str) -> None:
+        entity, field = selector.split(".", 1)
+        if not has_entity(canonical, entity):
+            errors.append(FieldError(path, f"Entity {entity} is not in the schema"))
+        elif field != "*" and find_field(canonical, entity, field) is None:
+            errors.append(FieldError(path, f"Field {field} is not in {entity}"))
+
+    for i, p in enumerate(content["precedence"]):
+        check(f"precedence[{i}].field", p["field"])
+    for i, f in enumerate(content["materialFields"]):
+        if f.endswith(".*"):
+            errors.append(FieldError(f"materialFields[{i}]", "Name each material field (no wildcards)"))
+        else:
+            check(f"materialFields[{i}]", f)
     return errors
 
 
@@ -470,6 +551,7 @@ _SCHEMAS: dict[ArtifactKind, dict] = {
     ArtifactKind.TRANSFORM: TRANSFORM_SCHEMA_JSON,
     ArtifactKind.CROSSWALK: CROSSWALK_SCHEMA_JSON,
     ArtifactKind.EVIDENCE_TEMPLATE: EVIDENCE_TEMPLATE_JSON,
+    ArtifactKind.PRECEDENCE_POLICY: PRECEDENCE_POLICY_JSON,
 }
 _VALIDATORS = {k: Draft202012Validator(v) for k, v in _SCHEMAS.items()}
 _CHECKS: dict[ArtifactKind, Callable[[dict], list[FieldError]]] = {
@@ -478,11 +560,13 @@ _CHECKS: dict[ArtifactKind, Callable[[dict], list[FieldError]]] = {
     ArtifactKind.TRANSFORM: check_transform,
     ArtifactKind.CROSSWALK: check_crosswalk,
     ArtifactKind.EVIDENCE_TEMPLATE: check_evidence_template,
+    ArtifactKind.PRECEDENCE_POLICY: check_precedence_policy,
 }
 _CROSS_CHECKS: dict[ArtifactKind, Callable[[dict, dict], list[FieldError]]] = {
     ArtifactKind.LOOKUP: check_lookup_against,
     ArtifactKind.CROSSWALK: check_crosswalk_against,
     ArtifactKind.EVIDENCE_TEMPLATE: check_evidence_template_against,
+    ArtifactKind.PRECEDENCE_POLICY: check_precedence_policy_against,
 }
 
 MAX_STRUCTURE_ERRORS = 50
@@ -508,7 +592,7 @@ def canonical_schema_key(kind: ArtifactKind | str, content: Any) -> str | None:
     """The canonical schema a lookup or crosswalk points to (None for other kinds or bad content)."""
     if ArtifactKind(kind) not in _CROSS_CHECKS or not isinstance(content, dict):
         return None
-    if ArtifactKind(kind) is ArtifactKind.EVIDENCE_TEMPLATE:
+    if ArtifactKind(kind) in (ArtifactKind.EVIDENCE_TEMPLATE, ArtifactKind.PRECEDENCE_POLICY):
         key = content.get("canonicalSchema")
         return key if isinstance(key, str) else None
     target = content.get("target")
@@ -530,7 +614,8 @@ def validate_content(kind: ArtifactKind | str, content: Any, *,
     if kind in _CROSS_CHECKS:
         if canonical is None:
             key = canonical_schema_key(kind, content)
-            path = "canonicalSchema" if kind is ArtifactKind.EVIDENCE_TEMPLATE else "target.schema"
+            path = "canonicalSchema" if kind in (ArtifactKind.EVIDENCE_TEMPLATE, ArtifactKind.PRECEDENCE_POLICY) \
+                else "target.schema"
             errors.append(FieldError(path, f"No published canonical schema {key}"))
         else:
             errors += _CROSS_CHECKS[kind](content, canonical)

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ApiError } from "../api/client";
 import {
   downloadTemplate,
+  useAddSource,
   useConfirmSheet,
   useEvidence,
   usePreviewSheet,
@@ -15,6 +16,7 @@ import {
   type UploadSummary,
 } from "../api/evidence";
 import { usePermissions } from "../api/identity";
+import { useReconciliation, type ReconOverview } from "../api/reconciliation";
 import { GuidanceCards } from "../components/GuidanceCards";
 import { WizardSteps } from "../components/WizardSteps";
 
@@ -33,15 +35,33 @@ const UPLOAD_STATUS: Record<UploadSummary["status"], { label: string; tone: stri
 };
 
 const PIPELINE = [
-  { name: "Ingest", text: "API / file upload / scheduled drop", live: true },
-  { name: "Map", text: "Template or field mapping to canonical schema", live: false },
-  { name: "Validate", text: "Required fields, types, duplicates and reference checks", live: false },
-  { name: "Match", text: "Product ID, source key and configurable matching rules", live: false },
-  { name: "Reconcile", text: "Precedence, freshness and steward-approved conflict rules", live: false },
-  { name: "Telco Graph", text: "Commercial product → service → resource → provisioning", live: false },
+  { name: "Ingest", text: "API / file upload / scheduled drop" },
+  { name: "Map", text: "Template or field mapping to canonical schema" },
+  { name: "Validate", text: "Required fields, types, duplicates and reference checks" },
+  { name: "Match", text: "Product ID, source key and configurable matching rules" },
+  { name: "Reconcile", text: "Precedence, freshness and steward-approved conflict rules" },
+  { name: "Telco Graph", text: "Commercial product → service → resource → provisioning" },
 ];
 
 const MAX_MB = 10;
+
+function pipelineState(step: string, ready: number, selected: number, r: ReconOverview | undefined): string {
+  const applied = r?.current_inputs.length ?? 0;
+  const ok = r?.latest_succeeded;
+  const snap = r?.snapshots.find((x) => x.status === "APPROVED");
+  switch (step) {
+    case "Ingest": return `${ready} of ${selected} ready`;
+    case "Map": return applied ? `${applied} source(s) applied` : "No mapping applied";
+    case "Validate": return applied ? "Checked before publishing" : "With each mapping";
+    case "Match": return ok ? "Matched on canonical keys" : "Not run";
+    case "Reconcile":
+      if (!ok) return r?.latest ? r.latest.status.toLowerCase() : "Not run";
+      return ok.counts && ok.counts.open_material_conflicts ? `${ok.counts.open_material_conflicts} conflict(s) open`
+        : "Reconciled";
+    case "Telco Graph": return snap ? `${snap.code} approved` : "No snapshot yet";
+    default: return "";
+  }
+}
 
 function fmtSize(bytes: number) {
   return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
@@ -59,15 +79,18 @@ export function EvidenceHubScreen({
   onContinue,
   onExit,
   onOpenMapping,
+  onOpenReconciliation,
 }: {
   runId: string;
   onBack: () => void;
   onContinue: () => void;
   onExit: () => void;
-  onOpenMapping?: (domain: string) => void;
+  onOpenMapping?: (domain: string, sourceId?: string) => void;
+  onOpenReconciliation?: () => void;
 }) {
   const { has } = usePermissions();
   const evidence = useEvidence(runId);
+  const recon = useReconciliation(runId);
   const setDomains = useSetDomains(runId);
   const data = evidence.data;
 
@@ -172,15 +195,21 @@ export function EvidenceHubScreen({
           <p className="pra-hub__sub">Normalize, map and reconcile before analysis.</p>
           <ol className="pra-pipeline">
             {PIPELINE.map((p, i) => (
-              <li key={p.name} className={`pra-pipeline__step${p.live ? " pra-pipeline__step--live" : ""}`}>
+              <li key={p.name} className="pra-pipeline__step pra-pipeline__step--live">
                 <span className="pra-pipeline__name">{i + 1} {p.name}</span>
                 <span className="pra-pipeline__text">{p.text}</span>
-                <span className="pra-pipeline__state">
-                  {p.live ? `${ready} of ${selected.length} ready` : "Later step"}
-                </span>
+                <span className="pra-pipeline__state">{pipelineState(p.name, ready, selected.length, recon.data)}</span>
               </li>
             ))}
           </ol>
+          {onOpenReconciliation && (
+            <div className="pra-hub__confirm">
+              <span className="pra-muted">Combine all sources, settle conflicts and approve the evidence snapshot.</span>
+              <button type="button" className="pra-button pra-button--primary" onClick={onOpenReconciliation}>
+                Reconcile &amp; approve evidence →
+              </button>
+            </div>
+          )}
         </section>
       </div>
 
@@ -268,15 +297,21 @@ function ExcelPanel({
   domain: EvidenceDomain;
   canUpload: boolean;
   onClose: () => void;
-  onOpenMapping?: (domain: string) => void;
+  onOpenMapping?: (domain: string, sourceId?: string) => void;
 }) {
   const upload = useUploadFile(runId);
+  const addSource = useAddSource(runId);
+  const [sourceId, setSourceId] = useState<string | null>(domain.sources[0]?.id ?? null);
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newSystem, setNewSystem] = useState("");
   const [chosen, setChosen] = useState<string | null>(null);
   const [error, setError] = useState<string[] | null>(null);
   const [dragging, setDragging] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
-  const fallback = domain.uploads.find((u) => u.status !== "REJECTED") ?? domain.uploads[0];
+  const uploads = sourceId ? domain.uploads.filter((u) => u.source_id === sourceId) : domain.uploads;
+  const fallback = uploads.find((u) => u.status !== "REJECTED") ?? uploads[0];
   const selectedId = chosen ?? fallback?.id ?? null;
 
   const send = async (file: File | undefined) => {
@@ -291,7 +326,8 @@ function ExcelPanel({
       return;
     }
     try {
-      const u = await upload.mutateAsync({ domain: domain.key, file });
+      const u = await upload.mutateAsync({ domain: domain.key, file, sourceId });
+      setSourceId(u.source_id);
       setChosen(u.id);
       if (u.duplicate) setError(["This exact file was already uploaded; showing the existing upload."]);
     } catch (e) {
@@ -322,6 +358,43 @@ function ExcelPanel({
         </div>
       </div>
 
+      <div className="pra-sources" aria-label="Sources">
+        <span className="pra-field__label">Source</span>
+        {domain.sources.length === 0 && <span className="pra-chip pra-chip--on">Excel (default)</span>}
+        {domain.sources.map((src) => (
+          <button key={src.id} type="button" className={`pra-chip${src.id === sourceId ? " pra-chip--on" : ""}`}
+            onClick={() => { setSourceId(src.id); setChosen(null); }}>
+            {src.name} <span className="pra-muted">· {src.system}</span>
+          </button>
+        ))}
+        {canUpload && !adding && (
+          <button type="button" className="pra-link" onClick={() => setAdding(true)}>+ Add another source</button>
+        )}
+        {adding && (
+          <span className="pra-sources__add">
+            <input className="pra-input" placeholder="Name, e.g. Dynamics export" value={newName}
+              onChange={(e) => setNewName(e.target.value)} aria-label="Source name" />
+            <input className="pra-input" placeholder="System, e.g. DYNAMICS" value={newSystem}
+              onChange={(e) => setNewSystem(e.target.value.toUpperCase())} aria-label="Source system" />
+            <button type="button" className="pra-button pra-button--ghost" disabled={addSource.isPending}
+              onClick={async () => {
+                setError(null);
+                try {
+                  const created = await addSource.mutateAsync({ domain: domain.key, name: newName, system: newSystem });
+                  setSourceId(created.id);
+                  setAdding(false);
+                  setNewName("");
+                  setNewSystem("");
+                } catch (e) {
+                  setError(e instanceof ApiError && e.fieldErrors.length ? e.fieldErrors.map((x) => x.message)
+                    : [e instanceof ApiError ? e.message : "Could not add the source."]);
+                }
+              }}>Add</button>
+            <button type="button" className="pra-link" onClick={() => setAdding(false)}>Cancel</button>
+          </span>
+        )}
+      </div>
+
       {canUpload && (
         <div
           className={`pra-drop${dragging ? " pra-drop--over" : ""}`}
@@ -343,15 +416,15 @@ function ExcelPanel({
         </div>
       )}
 
-      {domain.uploads.length === 0 ? (
-        <p className="pra-muted">No files uploaded for this domain yet.</p>
+      {uploads.length === 0 ? (
+        <p className="pra-muted">No files uploaded for this source yet.</p>
       ) : (
         <table className="pra-uploads">
           <thead>
             <tr><th>File</th><th>Uploaded</th><th>Status</th><th>Schema</th></tr>
           </thead>
           <tbody>
-            {domain.uploads.map((u) => (
+            {uploads.map((u) => (
               <tr key={u.id} className={u.id === selectedId ? "pra-uploads__row--on" : undefined}
                 onClick={() => setChosen(u.id)}>
                 <td>
@@ -363,7 +436,8 @@ function ExcelPanel({
                   <Pill tone={UPLOAD_STATUS[u.status].tone}>{UPLOAD_STATUS[u.status].label}</Pill>
                   {u.status === "REJECTED" && <div className="pra-uploads__reason">{u.reasons[0]?.message}</div>}
                 </td>
-                <td>{u.schema_version ? `v${u.schema_version}` : u.status === "READY" ? "Not confirmed" : "—"}</td>
+                <td>{u.schema_version ? `v${u.schema_version}` : u.status === "READY" ? "Not confirmed" : "—"}
+                  {u.as_of_date && <div className="pra-muted">as of {u.as_of_date}</div>}</td>
               </tr>
             ))}
           </tbody>
@@ -372,7 +446,9 @@ function ExcelPanel({
 
       {selectedId && (
         <UploadView runId={runId} uploadId={selectedId} canConfirm={canUpload}
-          onOpenMapping={onOpenMapping ? () => onOpenMapping(domain.key) : undefined} />
+          onOpenMapping={onOpenMapping
+            ? () => onOpenMapping(domain.key, domain.uploads.find((u) => u.id === selectedId)?.source_id)
+            : undefined} />
       )}
     </section>
   );
@@ -409,6 +485,7 @@ function SheetChooser({ runId, upload: u, canConfirm, onOpenMapping }: {
   const [msg, setMsg] = useState<string | null>(null);
   const preview = usePreviewSheet(runId);
   const confirm = useConfirmSheet(runId);
+  const [asOf, setAsOf] = useState(u.as_of_date ?? new Date().toISOString().slice(0, 10));
 
   const discovered = useMemo(() => sheets.find((s) => s.name === sheetName) ?? null, [sheets, sheetName]);
   const info = override ?? discovered;
@@ -435,7 +512,8 @@ function SheetChooser({ runId, upload: u, canConfirm, onOpenMapping }: {
     if (!info?.header_row) return;
     setMsg(null);
     try {
-      const res = await confirm.mutateAsync({ uploadId: u.id, sheet: sheetName, header_row: info.header_row });
+      const res = await confirm.mutateAsync({ uploadId: u.id, sheet: sheetName, header_row: info.header_row,
+        as_of: asOf });
       setMsg(`Confirmed as source schema v${res.schema?.version}.`);
     } catch (e) {
       setMsg(e instanceof ApiError ? [e.message, ...e.fieldErrors.map((x) => x.message)].join(" ") : "Could not confirm.");
@@ -468,6 +546,11 @@ function SheetChooser({ runId, upload: u, canConfirm, onOpenMapping }: {
               {preview.isPending ? "Reading…" : "Use this row"}
             </button>
           </span>
+        </label>
+        <label className="pra-field">
+          <span className="pra-field__label">Data as of</span>
+          <input className="pra-input" type="date" value={asOf} max={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => setAsOf(e.target.value)} disabled={!canConfirm} aria-label="Data as of" />
         </label>
         <div className="pra-sheet__facts">
           {info && <span>{info.data_rows.toLocaleString()} data rows · {info.columns.length} columns</span>}

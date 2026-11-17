@@ -18,8 +18,9 @@ class EvidenceDomain(StrEnum):
     TECHNICAL_CATALOG = "TECHNICAL_CATALOG"
     PROVISIONING = "PROVISIONING"
     INVENTORY = "INVENTORY"
-    # The field spec also names ORDER_BILLING_ASSURANCE; it is added once its template is specified
-    # (DECISIONS.md, Step 4).
+    # Aggregate domains added in Step 6 (DECISIONS.md): needed for subscriptions, MRR, fallout and billing.
+    ORDER_BILLING_ASSURANCE = "ORDER_BILLING_ASSURANCE"
+    CUSTOMER_REVENUE_AGGREGATES = "CUSTOMER_REVENUE_AGGREGATES"
 
 
 @dataclass(frozen=True)
@@ -56,17 +57,26 @@ DOMAINS: dict[EvidenceDomain, DomainInfo] = {
     D.INVENTORY: DomainInfo(D.INVENTORY, "Service / Resource Inventory", "Inventory",
                             "Service inventory, resource inventory, network inventory or data platform",
                             ("InventoryAggregate",), "TPL-INVENTORY"),
+    D.ORDER_BILLING_ASSURANCE: DomainInfo(D.ORDER_BILLING_ASSURANCE, "Order / Billing / Assurance", "OSS/BSS data",
+                                          "Order management, billing and service assurance (aggregated extracts)",
+                                          ("OrderAssuranceAggregate", "BillingSystem", "BillingDependency"),
+                                          "TPL-ORDER-BILLING-ASSURANCE"),
+    D.CUSTOMER_REVENUE_AGGREGATES: DomainInfo(D.CUSTOMER_REVENUE_AGGREGATES, "Customer & Revenue Aggregates",
+                                              "Data platform", "Billing or data platform (aggregated, no customer ids)",
+                                              ("CustomerRevenueAggregate",), "TPL-CUSTOMER-REVENUE"),
 }
 
 ALWAYS_PROPOSED = (D.CRM_CATALOG, D.LIFECYCLE)
 
 O = Objective
 OBJECTIVE_DOMAINS: dict[Objective, tuple[EvidenceDomain, ...]] = {
-    O.REDUCE_DUPLICATES: (D.CPQ, D.PRICE_BOOK, D.TECHNICAL_CATALOG),
-    O.BSS_SUNSET: (D.TECHNICAL_CATALOG, D.PROVISIONING, D.INVENTORY),
-    O.REDUCE_FALLOUT: (D.PROVISIONING, D.INVENTORY),
-    O.IMPROVE_MARGIN: (D.PRICE_BOOK, D.CPQ),
-    O.MIGRATION_READINESS: (D.TECHNICAL_CATALOG, D.PROVISIONING, D.INVENTORY),
+    O.REDUCE_DUPLICATES: (D.CPQ, D.PRICE_BOOK, D.TECHNICAL_CATALOG, D.CUSTOMER_REVENUE_AGGREGATES),
+    O.BSS_SUNSET: (D.TECHNICAL_CATALOG, D.PROVISIONING, D.INVENTORY, D.ORDER_BILLING_ASSURANCE,
+                   D.CUSTOMER_REVENUE_AGGREGATES),
+    O.REDUCE_FALLOUT: (D.PROVISIONING, D.INVENTORY, D.ORDER_BILLING_ASSURANCE),
+    O.IMPROVE_MARGIN: (D.PRICE_BOOK, D.CPQ, D.CUSTOMER_REVENUE_AGGREGATES),
+    O.MIGRATION_READINESS: (D.TECHNICAL_CATALOG, D.PROVISIONING, D.INVENTORY, D.ORDER_BILLING_ASSURANCE,
+                            D.CUSTOMER_REVENUE_AGGREGATES),
     O.PORTFOLIO_STANDARDISATION: (D.CPQ, D.TECHNICAL_CATALOG),
 }
 

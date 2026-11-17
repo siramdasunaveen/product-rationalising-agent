@@ -6,6 +6,8 @@ only: no subscriber-level data. Change it by publishing new versions, not by edi
 """
 
 CANONICAL_KEY = "TELCO-CANONICAL"
+# Smallest group a customer aggregate may describe (DECISIONS.md, Step 6): 1-9 subscriptions are rejected.
+MIN_COHORT = 10
 
 
 def _f(name: str, label: str, type_: str = "string", *, required: bool = False, **extra) -> dict:
@@ -145,6 +147,58 @@ TELCO_CANONICAL = {
                 _f("lastUpdated", "Last Updated", "datetime"),
             ],
         },
+        # --- Aggregates and billing (v1.1; needed by the candidate guides). Aggregates only, never
+        # subscriber-level rows: counts below the minimum cohort size are rejected at mapping time.
+        {
+            "name": "CustomerRevenueAggregate", "label": "Customer and revenue aggregate per product and period",
+            "keyFields": ["productId", "periodEnd"],
+            "fields": [
+                _ref("productId", "Product ID", "Product", required=True),
+                _f("periodStart", "Period Start", "date", required=True),
+                _f("periodEnd", "Period End", "date", required=True),
+                _f("activeSubscriptions", "Active Subscriptions", "integer", required=True, minimum=0,
+                   minCohort=MIN_COHORT),
+                _f("protectedPriceContracts", "Protected-Price Contracts", "integer", minimum=0),
+                _f("mrr", "Monthly Recurring Revenue", "decimal", minimum=0),
+                _f("currency", "Currency", pattern="^[A-Z]{3}$"),
+                _f("segment", "Segment"),
+                _f("market", "Market"),
+            ],
+        },
+        {
+            "name": "OrderAssuranceAggregate", "label": "Order and assurance aggregate per product and period",
+            "keyFields": ["productId", "periodEnd"],
+            "fields": [
+                _ref("productId", "Product ID", "Product", required=True),
+                _f("periodStart", "Period Start", "date", required=True),
+                _f("periodEnd", "Period End", "date", required=True),
+                _f("orderCount", "Orders", "integer", minimum=0),
+                _f("falloutOrders", "Fallout Orders", "integer", minimum=0),
+                _f("manualTouchOrders", "Manual-Touch Orders", "integer", minimum=0),
+                _f("incidentCount", "Incidents", "integer", minimum=0),
+                _f("provisioningExceptions", "Provisioning Exceptions", "integer", minimum=0),
+                _f("avgHandlingMinutes", "Average Handling Minutes", "decimal", minimum=0),
+            ],
+        },
+        {
+            "name": "BillingSystem", "label": "Billing system", "keyFields": ["billingSystemId"],
+            "fields": [
+                _f("billingSystemId", "Billing System ID", required=True),
+                _f("billingSystemName", "Billing System Name"),
+                _f("legacy", "Legacy System", "boolean"),
+            ],
+        },
+        {
+            "name": "BillingDependency", "label": "Product billed by a billing system",
+            "keyFields": ["productId", "billingSystemId"],
+            "fields": [
+                _ref("productId", "Product ID", "Product", required=True),
+                _ref("billingSystemId", "Billing System ID", "BillingSystem", required=True),
+                _f("billingCode", "Billing Code"),
+                _f("legacyBillingCode", "Legacy Billing Code", "boolean"),
+                _f("dependencyStatus", "Dependency Status", "enum", values=["ACTIVE", "DEPRECATED"]),
+            ],
+        },
     ],
     "relationships": [
         {"name": "INCLUDES", "label": "Offer includes product", "from": "Offer", "to": "Product",
@@ -161,6 +215,8 @@ TELCO_CANONICAL = {
          "cardinality": "MANY_TO_MANY", "attributes": EFFECTIVE},
         {"name": "PROVISIONED_BY", "label": "Provisioned by workflow", "from": ["Product", "ServiceSpec"],
          "to": "ProvisioningWorkflow", "cardinality": "MANY_TO_MANY", "attributes": EFFECTIVE},
+        {"name": "BILLED_BY", "label": "Product billed by billing system", "from": "Product", "to": "BillingSystem",
+         "cardinality": "MANY_TO_MANY"},
     ],
 }
 
@@ -348,4 +404,83 @@ TEMPLATES: list[tuple[str, str, dict]] = [
             _col("Region", "InventoryAggregate", "region"),
             _col("Last Updated", "InventoryAggregate", "lastUpdated"),
         ])),
+    ("TPL-ORDER-BILLING-ASSURANCE", "Order / Billing / Assurance template", _template(
+        "ORDER_BILLING_ASSURANCE",
+        "One row per product, period and billing system. Aggregates only; the order and assurance figures are "
+        "repeated on each billing-system row of the same product and period.", [
+            _col("Product ID", "OrderAssuranceAggregate", "productId", required=True, example="PRD-V1",
+                 alsoTargets=[{"entity": "BillingDependency", "field": "productId"}]),
+            _col("Period Start", "OrderAssuranceAggregate", "periodStart", required=True, example="2026-10-01"),
+            _col("Period End", "OrderAssuranceAggregate", "periodEnd", required=True, example="2026-10-31"),
+            _col("Orders", "OrderAssuranceAggregate", "orderCount", example="5200"),
+            _col("Fallout Orders", "OrderAssuranceAggregate", "falloutOrders", example="437",
+                 description="Orders that failed and needed rework"),
+            _col("Manual-Touch Orders", "OrderAssuranceAggregate", "manualTouchOrders", example="310"),
+            _col("Incidents", "OrderAssuranceAggregate", "incidentCount", example="42"),
+            _col("Provisioning Exceptions", "OrderAssuranceAggregate", "provisioningExceptions", example="18"),
+            _col("Average Handling Minutes", "OrderAssuranceAggregate", "avgHandlingMinutes", example="12.5"),
+            _col("Billing System ID", "BillingSystem", "billingSystemId", required=True, example="BILL-LEGACY",
+                 alsoTargets=[{"entity": "BillingDependency", "field": "billingSystemId"}]),
+            _col("Billing System Name", "BillingSystem", "billingSystemName", example="Legacy billing"),
+            _col("Billing Code", "BillingDependency", "billingCode", example="LB-15GB"),
+            _col("Legacy Billing Code", "BillingDependency", "legacyBillingCode", example="Yes"),
+        ], [_rel("Product", "Product ID", "BillingSystem", "Billing System ID", name="BILLED_BY")])),
+    ("TPL-CUSTOMER-REVENUE", "Customer & Revenue Aggregates template", _template(
+        "CUSTOMER_REVENUE_AGGREGATES",
+        "One row per product and period. Aggregates only: counts of 1 to 9 subscriptions are rejected "
+        "(minimum group size 10); no customer or subscriber identifiers.", [
+            _col("Product ID", "CustomerRevenueAggregate", "productId", required=True, example="PRD-V1"),
+            _col("Period Start", "CustomerRevenueAggregate", "periodStart", required=True, example="2026-10-01"),
+            _col("Period End", "CustomerRevenueAggregate", "periodEnd", required=True, example="2026-10-31"),
+            _col("Active Subscriptions", "CustomerRevenueAggregate", "activeSubscriptions", required=True,
+                 example="86214"),
+            _col("Protected-Price Contracts", "CustomerRevenueAggregate", "protectedPriceContracts",
+                 example="4209"),
+            _col("MRR", "CustomerRevenueAggregate", "mrr", example="480000.00",
+                 description="Monthly recurring revenue of the active base"),
+            _col("Currency", "CustomerRevenueAggregate", "currency", example="GBP"),
+            _col("Segment", "CustomerRevenueAggregate", "segment"),
+            _col("Market", "CustomerRevenueAggregate", "market"),
+        ])),
 ]
+
+# ---------------------------------------------------------------------------
+# Reconciliation precedence (Step 6): which source wins each field, which fields are material
+# (conflicts need a Data Steward), and how fresh each domain's data must be.
+# ---------------------------------------------------------------------------
+
+PRECEDENCE_KEY = "TELCO-PRECEDENCE"
+TELCO_PRECEDENCE = {
+    "description": "Field-level source precedence: CRM owns product names, CPQ owns configuration, the price "
+                   "book owns list prices, PLM owns lifecycle.",
+    "canonicalSchema": CANONICAL_KEY,
+    "defaultFreshnessDays": 90,
+    "freshnessDays": {
+        "CRM_CATALOG": 90, "CPQ": 90, "PRICE_BOOK": 30, "LIFECYCLE": 30, "TECHNICAL_CATALOG": 180,
+        "PROVISIONING": 180, "INVENTORY": 30, "ORDER_BILLING_ASSURANCE": 30, "CUSTOMER_REVENUE_AGGREGATES": 30,
+    },
+    "precedence": [
+        {"field": "Product.*", "order": ["CRM_CATALOG"]},
+        {"field": "Offer.*", "order": ["CRM_CATALOG", "CPQ"]},
+        {"field": "CpqRule.*", "order": ["CPQ"]},
+        {"field": "PriceBookEntry.*", "order": ["PRICE_BOOK", "CPQ"]},
+        {"field": "ProductLifecycle.*", "order": ["LIFECYCLE", "CRM_CATALOG"]},
+        {"field": "ServiceSpec.*", "order": ["TECHNICAL_CATALOG"]},
+        {"field": "ResourceSpec.*", "order": ["TECHNICAL_CATALOG", "INVENTORY"]},
+        {"field": "ProvisioningWorkflow.*", "order": ["PROVISIONING"]},
+        {"field": "InventoryAggregate.*", "order": ["INVENTORY"]},
+        {"field": "CustomerRevenueAggregate.*", "order": ["CUSTOMER_REVENUE_AGGREGATES"]},
+        {"field": "OrderAssuranceAggregate.*", "order": ["ORDER_BILLING_ASSURANCE"]},
+        {"field": "BillingSystem.*", "order": ["ORDER_BILLING_ASSURANCE"]},
+        {"field": "BillingDependency.*", "order": ["ORDER_BILLING_ASSURANCE"]},
+    ],
+    "materialFields": [
+        "Product.productName", "Product.productFamily", "Product.status",
+        "ProductLifecycle.lifecycleStatus", "ProductLifecycle.endOfSaleDate", "ProductLifecycle.sunsetDate",
+        "PriceBookEntry.listPrice", "PriceBookEntry.currency",
+        "InventoryAggregate.status", "InventoryAggregate.activeCount",
+        "CustomerRevenueAggregate.activeSubscriptions", "CustomerRevenueAggregate.protectedPriceContracts",
+        "CustomerRevenueAggregate.mrr", "CustomerRevenueAggregate.currency",
+        "BillingDependency.legacyBillingCode", "ProvisioningWorkflow.targetCompatibility",
+    ],
+}

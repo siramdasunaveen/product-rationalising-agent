@@ -44,6 +44,7 @@ class RegistryKind(StrEnum):
     TRANSFORMS = "transforms"
     CROSSWALKS = "crosswalks"
     EVIDENCE_TEMPLATES = "evidence-templates"
+    PRECEDENCE_POLICIES = "precedence-policies"
 
 
 KINDS = {
@@ -52,6 +53,7 @@ KINDS = {
     RegistryKind.TRANSFORMS: ArtifactKind.TRANSFORM,
     RegistryKind.CROSSWALKS: ArtifactKind.CROSSWALK,
     RegistryKind.EVIDENCE_TEMPLATES: ArtifactKind.EVIDENCE_TEMPLATE,
+    RegistryKind.PRECEDENCE_POLICIES: ArtifactKind.PRECEDENCE_POLICY,
 }
 
 Reader = Annotated[Principal, Depends(require_permission(Permission.REGISTRY_READ))]
