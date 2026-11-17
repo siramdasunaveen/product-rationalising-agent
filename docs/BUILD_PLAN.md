@@ -90,7 +90,7 @@ field specification were supplied; revised again the same day after the 5 candid
   OUT_OF_SCOPE / SUPERSEDED with lineage; batch-count reconciliation (raw − merged − invalid − superseded).
 - Done when: the worked dataset reproduces its counts and the same snapshot + pack reproduces the same findings.
 
-## Step 11: Scoring, priority, blockers, recommendation; Run Overview · TODO
+## Step 11: Scoring, priority, blockers, recommendation; Run Overview · DONE
 - Opportunity Score (pinned profile), three dimensions (commercial, technical, execution) with
   NOT_ASSESSED/BLOCKED instead of low scores; Priority index + bands + overrides → effectivePriority.
 - Blocker records (category, state, consequence, severity, domain) created/resolved by services.

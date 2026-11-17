@@ -192,6 +192,13 @@ compatibility. Step 4 (**Review**) summarises scope, evidence, scoring, AI route
 must be acknowledged, then **Start analysis** pins everything in an immutable Run Manifest
 (`GET /runs/{id}/manifest`). Publishing newer packs later never changes a started run.
 
+## Run Overview
+
+After Start, the worker runs the analysis (Discover, Normalize, Analyze, Assess, Recommend). **Run Overview** shows
+source products, candidates, high priority and blocked counts (with how they reconcile), the stage progress and the
+blockers that need attention. Every number is deterministic: Opportunity Score, the three assessment dimensions,
+recommendation (with disposition guards), priority (separate from the score) and blocker records.
+
 ## AI
 
 Every AI task goes through the **AI Runtime** (tab visible to Agent Admins). Approved models and endpoints are

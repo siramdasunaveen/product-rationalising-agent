@@ -516,3 +516,30 @@
   border-radius: var(--radius-sm); background: #fff7ea; display: grid; gap: var(--space-2); font-size: 13px; }
 .pra-review__ack-row { display: flex; gap: var(--space-2); align-items: flex-start; }
 @media (max-width: 900px) { .pra-cfg__grid, .pra-review__grid { grid-template-columns: 1fr; } }
+
+/* Run Overview (screen 06) */
+.pra-overview__kpi { text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.pra-overview__kpi:hover { border-color: #4f5bd5; }
+.pra-overview__accent { color: #2f7de1; }
+.pra-overview__recon { font-size: 12px; margin: calc(-1 * var(--space-4)) 0 var(--space-6); max-width: 1000px; }
+.pra-overview__stages { list-style: none; padding: 0; margin: 0 0 var(--space-6); display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--space-3); }
+.pra-overview__stage { display: grid; gap: 4px; text-align: center; padding: var(--space-3);
+  border: 1.5px solid var(--color-text); border-radius: var(--radius-sm); background: var(--color-surface); font-size: 13px; }
+.pra-overview__stage--complete { background: #e8f8ee; }
+.pra-overview__stage--waiting, .pra-overview__stage--running { background: #eef0ff; }
+.pra-overview__stage--failed { background: #fdeeee; border-color: var(--color-danger); }
+.pra-overview__h2 { font-size: 18px; margin: 0 0 var(--space-3); }
+.pra-overview__attention { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2); }
+.pra-overview__row { width: 100%; display: grid; grid-template-columns: 110px 1.2fr 2fr 1fr; gap: var(--space-3);
+  align-items: center; text-align: left; padding: var(--space-3) var(--space-4); background: var(--color-surface);
+  border: 1px solid var(--color-border); border-radius: var(--radius-sm); font: inherit; font-size: 13px; color: inherit;
+  cursor: pointer; }
+.pra-overview__row:disabled { cursor: default; }
+.pra-overview__row:not(:disabled):hover { border-color: #4f5bd5; }
+.pra-overview__sev { font-weight: 700; font-size: 12px; }
+.pra-overview__sev--danger { color: var(--color-danger); }
+.pra-overview__sev--warning { color: var(--color-warning); }
+.pra-overview__retry { margin-left: var(--space-3); }
+.pra-overview__more { font-size: 13px; font-weight: 400; }
+@media (max-width: 900px) { .pra-overview__row { grid-template-columns: 1fr; } }

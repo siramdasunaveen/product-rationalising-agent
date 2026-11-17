@@ -324,3 +324,16 @@ def compute(policy: dict, evidence: Evidence, selected: list[str]) -> dict[str, 
     result = {"kpis": kpis, "domains": domains, "assessments": assessments, "dispositions": dispositions}
     result["result_hash"] = "sha256:" + hashlib.sha256(canonical_json(result)).hexdigest()
     return result
+
+
+def product_coverage(policy: dict, evidence: Evidence) -> dict[str, set[str]]:
+    """Per product id: the evidence domains whose readiness measures cover it (same rules as screen 11)."""
+    subject = policy["subject"]["entity"]
+    idx = _Index(evidence)
+    out: dict[str, set[str]] = {}
+    for (e, k) in evidence.records:
+        if e != subject:
+            continue
+        pid = key_value(k)
+        out[pid] = {d["domain"] for d in policy["domains"] if all(_covered(m, subject, k, idx) for m in d["measures"])}
+    return out

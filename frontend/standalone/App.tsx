@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Navigate, Route, Routes, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   AIRuntimeScreen, AssessmentsScreen, CreateRunScopeScreen, EvidenceHubScreen, EvidenceReadinessScreen, MappingRulesScreen,
-  PlaceholderScreen, ReconciliationScreen, ReviewStartScreen, ScoringRouteScreen, useManifest,
+  PlaceholderScreen, ReconciliationScreen, ReviewStartScreen, RunOverviewScreen, ScoringRouteScreen, useManifest,
 } from "../src";
 import { tokenStore } from "./auth";
 import { Login } from "./Login";
@@ -53,9 +53,14 @@ function ScreenRoutes() {
       <Route path="/runs/:runId/readiness" element={<ReadinessRoute />} />
       <Route path="/runs/:runId/scoring" element={<ScoringRoute />} />
       <Route path="/runs/:runId/review" element={<ReviewRoute />} />
+      <Route path="/runs/:runId/overview" element={<OverviewRoute />} />
       <Route
-        path="/runs/:runId/overview"
-        element={<PlaceholderScreen title="Run Overview" note="Analysis results arrive in build step 11." />}
+        path="/runs/:runId/candidates"
+        element={<PlaceholderScreen title="Candidate Explorer" note="Arrives in build step 12." />}
+      />
+      <Route
+        path="/runs/:runId/candidates/:candidateId"
+        element={<PlaceholderScreen title="Candidate Review" note="Arrives in build step 12." />}
       />
       {placeholders.map((n) => (
         <Route
@@ -167,5 +172,17 @@ function ReviewRoute() {
   return (
     <ReviewStartScreen key={runId} runId={runId!} onEdit={(s) => stepPath(runId!, s) && navigate(stepPath(runId!, s)!)}
       onStarted={() => navigate(`/runs/${runId}/overview`)} onExit={() => navigate("/")} />
+  );
+}
+
+function OverviewRoute() {
+  const { runId } = useParams();
+  const navigate = useNavigate();
+  return (
+    <RunOverviewScreen key={runId} runId={runId!}
+      onOpenCandidates={(view) => navigate(`/runs/${runId}/candidates${view ? `?view=${view}` : ""}`)}
+      onOpenCandidate={(id, blockerId) =>
+        navigate(`/runs/${runId}/candidates/${id}${blockerId ? `?focus=blocker&blockerId=${blockerId}` : ""}`)}
+      onOpenReview={() => navigate(`/runs/${runId}/review`)} onExit={() => navigate("/")} />
   );
 }

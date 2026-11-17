@@ -92,6 +92,47 @@ def findings(run_id: uuid.UUID, user: Viewer, db: DbDep,
             for f in db.scalars(stmt.order_by(DetectorFinding.detector_type, DetectorFinding.finding_key))]
 
 
+class AttentionOut(BaseModel):
+    blocker_id: uuid.UUID
+    code: str
+    severity: str = Field(description="LOW | MEDIUM | HIGH | CRITICAL (blocker severity, never copied from priority)")
+    subject: str
+    candidate_id: uuid.UUID | None
+    candidate_code: str | None
+    message: str
+    domain: str
+    owner_role: str | None
+    due_date: str | None
+    created_at: str
+
+
+class OverviewOut(BaseModel):
+    run_id: uuid.UUID
+    run_code: str
+    run_name: str
+    state: str
+    state_label: str
+    snapshot: dict | None
+    analysis: dict | None
+    metrics: dict = Field(description="sourceProducts, candidates, highPriority, blocked (null until analysed)")
+    detectorSummary: dict | None
+    counts: dict | None = Field(description="Batch reconciliation: rawFindings - merged - invalid - outOfScope = "
+                                            "candidates")
+    sourceProducts: dict | None
+    stages: list[dict]
+    attention: list[AttentionOut]
+    attentionTotal: int = Field(description="Blockers matching the attention query before the top-N limit")
+    projectionVersion: int
+
+
+@router.get("/runs/{run_id}/overview", response_model=OverviewOut, responses=ERRORS,
+            summary="Run Overview: metrics, detector summary, stage progress, attention required")
+def overview(run_id: uuid.UUID, user: CurrentUser, db: DbDep) -> OverviewOut:
+    from app.services import overview as overview_service
+
+    return OverviewOut(**overview_service.overview(db, get_run(db, user.tenant_id, run_id)))
+
+
 def latest_candidates(db, run, *, include_inactive: bool = False) -> list[Candidate]:
     a = service.latest(db, run, succeeded=True)
     if a is None:

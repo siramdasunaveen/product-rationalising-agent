@@ -147,6 +147,8 @@ class Run(IdMixin, TenantMixin, CreatedAtMixin, Base):
     configuration: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     started_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # Incremented whenever the run's read models change (analysis completed, blocker state changed).
+    projection_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
 # ---------------------------------------------------------------------------
@@ -764,3 +766,51 @@ class Candidate(IdMixin, TenantMixin, CreatedAtMixin, Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False)  # ACTIVE | INVALID | OUT_OF_SCOPE | SUPERSEDED
     superseded_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     lineage: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    # Step 11 assessment (all deterministic; see app.domain.assessment)
+    similarity: Mapped[int | None] = mapped_column(Integer, nullable=True)  # per mille, primary detector
+    opportunity_score: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 0-100
+    score_inputs: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    score_coverage: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    dimensions: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    guardrail: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    recommendation: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    impact: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    priority_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    base_priority: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    effective_priority: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    priority_detail: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    candidate_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    hidden: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    assessment_hash: Mapped[str | None] = mapped_column(String(71), nullable=True)
+
+
+class Blocker(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """A persisted reason the workflow cannot proceed (or a warning). Created and resolved by services as facts
+    change; never derived on the fly. Counted on Run Overview when active, BLOCKED, applicable, not superseded."""
+
+    __tablename__ = "blocker"
+    __table_args__ = (UniqueConstraint("run_id", "code", name="uq_blocker_run_code"),)
+
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.run.id"), nullable=False)
+    analysis_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.analysis_run.id"), nullable=False)
+    candidate_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True, index=True)
+    candidate_code: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    code: Mapped[str] = mapped_column(String(16), nullable=False)  # BLK-0001 per run
+    dedupe_key: Mapped[str] = mapped_column(String(300), nullable=False)
+    rule: Mapped[str] = mapped_column(String(40), nullable=False)
+    category: Mapped[str] = mapped_column(String(16), nullable=False)  # EVIDENCE|VALIDATION|POLICY|DEPENDENCY|WORKFLOW
+    state: Mapped[str] = mapped_column(String(16), nullable=False)  # OPEN | IN_PROGRESS | RESOLVED | WAIVED
+    consequence: Mapped[str] = mapped_column(String(16), nullable=False)  # BLOCKED | WARNING_ONLY
+    severity: Mapped[str] = mapped_column(String(10), nullable=False)
+    domain: Mapped[str] = mapped_column(String(16), nullable=False)
+    subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    owner_role: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    applicable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    superseded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    facts: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    resolution: Mapped[str | None] = mapped_column(Text, nullable=True)

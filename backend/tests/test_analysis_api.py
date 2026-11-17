@@ -38,12 +38,13 @@ def sample_rows(name):
                                         for v in r] for r in rows[1:]]
 
 
-def started_run(env):
+def started_run(env, files=None):
+    files = files or FILES
     c = env["client"]
     ov = c.get(f"{R(env)}/evidence", headers=env["pm"]).json()
     assert c.put(f"{R(env)}/evidence/domains", headers=env["pm"],
                  json={"domains": list(FILES), "version": ov["version"]}).status_code == 200
-    for domain, name in FILES.items():
+    for domain, name in files.items():
         headers, rows = sample_rows(name)
         uid = load(env, domain, headers, rows, name=name)
         apply(env, uid, publish_mapping(env, domain, default_source(env, domain)))
