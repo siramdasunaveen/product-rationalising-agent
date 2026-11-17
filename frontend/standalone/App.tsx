@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Navigate, Route, Routes, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   AIRuntimeScreen, AssessmentsScreen, CandidateExplorerScreen, CandidateReviewScreen, CreateRunScopeScreen,
-  EvidenceRequestScreen, EvidenceRequestsScreen,
+  ApprovalScreen, ApprovalsScreen, DecisionScreen, EvidenceRequestScreen, EvidenceRequestsScreen,
   EvidenceHubScreen, EvidenceReadinessScreen, MappingRulesScreen, PlaceholderScreen, ReconciliationScreen,
   ReviewStartScreen, RunOverviewScreen, ScoringRouteScreen, useManifest,
 } from "../src";
@@ -40,7 +40,7 @@ export function App() {
 
 function ScreenRoutes() {
   const { data: manifest } = useManifest();
-  const built = new Set(["/", "/evidence-readiness", "/ai-runtime", "/evidence-needed"]);
+  const built = new Set(["/", "/evidence-readiness", "/ai-runtime", "/evidence-needed", "/decision-approvals"]);
   const placeholders = (manifest?.nav ?? []).filter((n) => !built.has(n.path));
   return (
     <Routes>
@@ -58,6 +58,9 @@ function ScreenRoutes() {
       <Route path="/runs/:runId/overview" element={<OverviewRoute />} />
       <Route path="/runs/:runId/candidates" element={<ExplorerRoute />} />
       <Route path="/runs/:runId/candidates/:candidateId" element={<CandidateRoute />} />
+      <Route path="/runs/:runId/candidates/:candidateId/decision" element={<DecisionRoute />} />
+      <Route path="/decision-approvals" element={<ApprovalsRoute />} />
+      <Route path="/runs/:runId/decisions/:code" element={<ApprovalRoute />} />
       <Route path="/evidence-needed" element={<RequestsRoute />} />
       <Route path="/runs/:runId/evidence-requests" element={<RequestsRoute />} />
       <Route path="/runs/:runId/evidence-requests/:code" element={<RequestRoute />} />
@@ -196,6 +199,32 @@ function CandidateRoute() {
       onOpenEvidenceRequest={(code) => navigate(`/runs/${runId}/evidence-requests/${code}`)}
       onContinueToDecision={(id, action, target) =>
         navigate(`/runs/${runId}/candidates/${id}/decision?action=${action}${target ? `&target=${target}` : ""}`)} />
+  );
+}
+
+function DecisionRoute() {
+  const { runId, candidateId } = useParams();
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  return (
+    <DecisionScreen key={candidateId} runId={runId!} candidateCode={candidateId!}
+      initialAction={params.get("action") ?? undefined} initialTarget={params.get("target") ?? undefined}
+      onBack={() => navigate(`/runs/${runId}/candidates/${candidateId}`)}
+      onOpenApproval={(code) => navigate(`/runs/${runId}/decisions/${code}`)} />
+  );
+}
+
+function ApprovalsRoute() {
+  const navigate = useNavigate();
+  return <ApprovalsScreen onOpen={(rid, code) => navigate(`/runs/${rid}/decisions/${code}`)} />;
+}
+
+function ApprovalRoute() {
+  const { runId, code } = useParams();
+  const navigate = useNavigate();
+  return (
+    <ApprovalScreen key={code} runId={runId!} code={code!} onBack={() => navigate("/decision-approvals")}
+      onOpenCandidate={(cand) => navigate(`/runs/${runId}/candidates/${cand}`)} />
   );
 }
 

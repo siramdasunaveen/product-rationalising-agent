@@ -129,10 +129,10 @@ def _run(session: Session, tenant_id: str, run_id: uuid.UUID, *, for_update: boo
 
 def evidence_locked(session: Session, run: Run) -> str | None:
     """Why evidence cannot change now, or None. Evidence is editable while configuring, and again in REVIEW while
-    the run has an evidence request waiting for a return (step 13: progressive evidence collection)."""
+    the run (in REVIEW or APPROVAL) has an evidence request waiting for a return (step 13)."""
     if run.state in EDITABLE_STATES:
         return None
-    if run.state == RunState.REVIEW.value and session.scalar(select(EvidenceRequest.id).where(
+    if run.state in (RunState.REVIEW.value, RunState.APPROVAL.value) and session.scalar(select(EvidenceRequest.id).where(
             EvidenceRequest.run_id == run.id, EvidenceRequest.tenant_id == run.tenant_id,
             EvidenceRequest.status.in_(("OPEN", "IN_PROGRESS", "REJECTED"))).limit(1)):
         return None

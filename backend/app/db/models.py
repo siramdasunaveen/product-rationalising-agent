@@ -909,3 +909,86 @@ class EvidenceRequestEvent(IdMixin, TenantMixin, CreatedAtMixin, Base):
     actor_id: Mapped[str] = mapped_column(String(128), nullable=False)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     detail: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+
+
+class Decision(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """The human-owned decision of one candidate (DEC-0001 per run). Content lives in immutable versions; this
+    row tracks the current version and state. Approval never changes a product."""
+
+    __tablename__ = "decision"
+    __table_args__ = (UniqueConstraint("run_id", "code", name="uq_decision_run_code"),
+                      UniqueConstraint("run_id", "candidate_code", name="uq_decision_run_candidate"))
+
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.run.id"), nullable=False)
+    code: Mapped[str] = mapped_column(String(16), nullable=False)
+    candidate_code: Mapped[str] = mapped_column(String(16), nullable=False)
+    current_version_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    current_version_no: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    state: Mapped[str] = mapped_column(String(16), nullable=False)  # DRAFT|SUBMITTED|ON_HOLD|RETURNED|APPROVED|REJECTED|SUPERSEDED
+    approved_version_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+
+
+class DecisionVersion(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """An immutable decision version (append-only): the content, what it was taken on, its hash and route."""
+
+    __tablename__ = "decision_version"
+    __table_args__ = (UniqueConstraint("decision_id", "version_no", name="uq_decision_version_no"),)
+
+    decision_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.decision.id"), nullable=False)
+    version_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    candidate_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    analysis_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    snapshot_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    snapshot_code: Mapped[str] = mapped_column(String(16), nullable=False)
+    manifest_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    recommendation: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    disposition: Mapped[str] = mapped_column(String(16), nullable=False)
+    target_product_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    effective_date: Mapped[date] = mapped_column(Date, nullable=False)
+    owner_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+    commercial_treatment: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    conditions: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    readiness: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    route: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    content_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    created_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)  # why this version exists (edit, return, reassessment)
+
+
+class ApprovalTask(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """One required approval scope of a submitted decision version."""
+
+    __tablename__ = "approval_task"
+
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.run.id"), nullable=False)
+    decision_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.decision.id"), nullable=False)
+    version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.decision_version.id"), nullable=False)
+    scope: Mapped[str] = mapped_column(String(40), nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False)  # PENDING|APPROVED|REJECTED|RETURNED|ON_HOLD|CANCELLED
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    acted_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    acted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ApprovalAction(IdMixin, TenantMixin, CreatedAtMixin, Base):
+    """Append-only approval evidence: actor, roles, auth context, version, hash, policy result, comment.
+    Retained for the policy pack's auditRetentionYears (7)."""
+
+    __tablename__ = "approval_action"
+
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.run.id"), nullable=False)
+    decision_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.decision.id"), nullable=False)
+    version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(f"{SCHEMA}.decision_version.id"), nullable=False)
+    task_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    scope: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    action: Mapped[str] = mapped_column(String(16), nullable=False)  # SUBMIT|APPROVE|RETURN|HOLD|REJECT|SUPERSEDE
+    actor_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    actor_roles: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    auth_context: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    content_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    policy_result: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resulting_state: Mapped[str] = mapped_column(String(16), nullable=False)

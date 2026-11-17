@@ -336,8 +336,8 @@ def accept(session: Session, platform: Platform, principal: Principal, run: Run,
     req = get(session, run, code)
     if req.status != "RECEIVED":
         raise RequestConflict(f"{req.code} is {req.status.lower().replace('_', ' ')}; nothing to accept")
-    if run.state != RunState.REVIEW.value:
-        raise RequestConflict(f"Evidence can be accepted while the run is in review (now {run.state})")
+    if run.state not in (RunState.REVIEW.value, RunState.APPROVAL.value):
+        raise RequestConflict(f"Evidence can be accepted while the run is in review or approval (now {run.state})")
     snap = session.get(EvidenceSnapshot, req.received_snapshot_id)
     if snap is None or snap.status != "APPROVED":
         raise RequestConflict("The received snapshot is no longer the approved one; wait for the newer return")

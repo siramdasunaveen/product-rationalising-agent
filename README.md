@@ -219,6 +219,17 @@ extract or the governed Excel template. The queue (**Evidence Needed**) shows op
 counts. A return arrives through the Evidence Hub as a new approved snapshot; every request it refreshes becomes
 Received, accepting it runs a reassessment on the child snapshot with the run's pinned versions, and the gap closes.
 
+## Decisions and approvals
+
+*Continue to Decision* opens the **Decision** screen: the owner confirms disposition, target, effective date and
+rationale; every save is an immutable version with a SHA-256 content hash. Submission is gated server-side (missing
+mandatory evidence forces INVESTIGATE; the disposition's evidence domains must be AVAILABLE) and the policy pack
+routes the version to the required approval scopes (product, commercial, architecture), escalated by customer
+impact. On **Decision Approvals** each approver acts on the exact version and hash: Approve, or Return / Hold /
+Reject with a comment; self-approval can be disabled; policy checks are re-evaluated on every view and nothing
+BLOCKED can be approved. The decision is APPROVED when every scope approved; it changes no product. A reassessment
+that materially changes the picture supersedes the version so a new one is taken.
+
 ## AI
 
 Every AI task goes through the **AI Runtime** (tab visible to Agent Admins). Approved models and endpoints are

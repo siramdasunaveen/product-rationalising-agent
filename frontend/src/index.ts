@@ -21,4 +21,6 @@ export { CandidateExplorerScreen } from "./screens/CandidateExplorerScreen";
 export { CandidateReviewScreen } from "./screens/CandidateReviewScreen";
 export { EvidenceRequestsScreen } from "./screens/EvidenceRequestsScreen";
 export { EvidenceRequestScreen } from "./screens/EvidenceRequestScreen";
+export { DecisionScreen } from "./screens/DecisionScreen";
+export { ApprovalScreen, ApprovalsScreen } from "./screens/ApprovalScreen";
 export { PlaceholderScreen } from "./screens/PlaceholderScreen";

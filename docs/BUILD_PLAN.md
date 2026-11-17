@@ -116,7 +116,7 @@ field specification were supplied; revised again the same day after the 5 candid
   requests; accept → child snapshot → targeted reassessment with pinned versions (screens 13, 14, 15).
 - Seed scenario: CAND-1042 with ER-102 and ER-103; gap branch of the CAND-1042 example (SNAP-005 → SNAP-006).
 
-## Step 14: Decisions and approvals · TODO
+## Step 14: Decisions and approvals · DONE
 - Decision form (screen 09) with submission gating (rule 6); immutable versions + content hash.
 - Policy-based approval routing; Approve / Reject / Return / Hold (comment required) (screen 10).
 - End-to-end test of CAND-1042 before and after evidence acceptance.

@@ -251,6 +251,18 @@ def list_runs(session: Session, tenant_id: str, *, query: str = "", limit: int =
 def summarise(session: Session, tenant_id: str) -> RunSummary:
     active = session.scalar(select(func.count()).select_from(Run).where(
         Run.tenant_id == tenant_id, Run.state.in_([s.value for s in IN_PROGRESS_STATES]))) or 0
-    # Opportunities, approvals and blockers are produced by later steps (analysis, decisions,
-    # readiness); until those exist they are genuinely zero.
-    return RunSummary(active_runs=active, opportunities=0, awaiting_approval=0, blocked=0)
+    from app.db.models import AnalysisRun, Blocker, Candidate, Decision
+    from app.services.assessment import ACTIVE as ACTIVE_BLOCKERS
+
+    in_progress = [s.value for s in IN_PROGRESS_STATES]
+    latest_ok = (select(AnalysisRun.id).where(AnalysisRun.run_id == Run.id, AnalysisRun.status == "SUCCEEDED")
+                 .order_by(AnalysisRun.seq.desc()).limit(1).scalar_subquery())
+    opportunities = session.scalar(select(func.count()).select_from(Candidate).join(Run, Run.id == Candidate.run_id)
+                                   .where(Run.tenant_id == tenant_id, Run.state.in_(in_progress),
+                                          Candidate.status == "ACTIVE", Candidate.analysis_id == latest_ok)) or 0
+    awaiting = session.scalar(select(func.count()).select_from(Decision).where(
+        Decision.tenant_id == tenant_id, Decision.state.in_(("SUBMITTED", "ON_HOLD")))) or 0
+    blocked = session.scalar(select(func.count()).select_from(Blocker).join(Run, Run.id == Blocker.run_id).where(
+        Run.tenant_id == tenant_id, Run.state.in_(in_progress), Blocker.state.in_(ACTIVE_BLOCKERS),
+        Blocker.consequence == "BLOCKED", Blocker.applicable.is_(True), Blocker.superseded.is_(False))) or 0
+    return RunSummary(active_runs=active, opportunities=opportunities, awaiting_approval=awaiting, blocked=blocked)
