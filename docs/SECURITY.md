@@ -28,12 +28,12 @@ log shipping to a SIEM, egress allow-listing. See `docs/DEPLOYMENT.md`.
 
 | Id | Finding | Severity | Status |
 |---|---|---|---|
-| SEC-01 | A publicly known default `PRA_JWT_SECRET` is accepted; production settings are not validated at start-up | Critical | Open — add a settings validator that refuses placeholder secrets and dev defaults when `PRA_ENVIRONMENT` is not dev/test |
+| SEC-01 | A publicly known default `PRA_JWT_SECRET` is accepted; production settings are not validated at start-up | Critical | **Closed 18 Nov 2026** — `Settings` refuses placeholder/weak JWT secrets, a missing Fernet key, a demo password, wildcard CORS and the local DB credentials whenever `PRA_ENVIRONMENT` is not dev/development/local/test (the process fails to start) |
 | SEC-02 | No MFA / step-up for privileged actions in standalone mode | High | By design: standalone login is for development; production authentication comes from AI Studio SSO |
-| SEC-03 | JWTs are not revocable on logout, deactivation or password change | High | Open — short TTL plus a `jti` deny-list in Redis |
+| SEC-03 | JWTs are not revocable on logout, deactivation or password change | High | **Closed 18 Nov 2026** — `POST /auth/logout` revokes the token (`jti` deny-list in Redis, expiring with the token); password change and deactivation (CLI) invalidate every token issued before; checked on every request |
 | SEC-04 | No rate limiting on `/auth/login`; lockout can be used as a denial-of-service lever | High | Open — edge rate limiting now; per-IP throttle in the API planned |
 | SEC-05 | Request bodies are read before authentication and no global body limit is set | High | Mitigated at the proxy (`client_max_body_size`); API-level limit planned |
-| SEC-06 | Redis job channel is unauthenticated (pickle → code execution in the worker) | High | Platform: Redis AUTH + TLS + private network; code: restrict job function paths to the `app.jobs` package |
+| SEC-06 | Redis job channel is unauthenticated (pickle → code execution in the worker) | High | Code side closed 18 Nov 2026: the queue refuses any function path outside `app.jobs.`; platform side (Redis AUTH + TLS + private network) remains a deployment requirement |
 | — | BYO AI endpoint and connector URLs could target internal hosts (SSRF) | High | Connector hosts are allow-listed to Salesforce domains; BYO endpoint allow-list planned |
 | — | Excel discovery trusts the sheet `<dimension>`; unbounded cell/header lengths | High | Open — cap by streamed rows and truncate values |
 | — | Audit hash chain is unkeyed and not externally anchored | High | Open — HMAC with a KMS key and periodic anchor |

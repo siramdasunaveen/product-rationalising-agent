@@ -126,3 +126,16 @@ def test_reproducible():
 @pytest.mark.parametrize("a,b,expected", [({"x"}, {"x"}, 1.0), ({"x"}, {"y"}, 0.0), (set(), {"y"}, None)])
 def test_jaccard(a, b, expected):
     assert det.jaccard(a, b) == expected
+
+
+def test_zero_family_baseline_keeps_above_baseline_outliers():
+    """Review fix: a family P95 of 0 (most products have no fallout) must not zero the one product that has some."""
+    quiet = [p(f"Q{i:02d}", orders=1000, fallout=0, manual_touch=0, incidents=0, provisioning_exceptions=0,
+               handling_minutes=0.0) for i in range(1, 12)]
+    quiet[0] = p("Q01", orders=1000, fallout=120, manual_touch=40, incidents=25, provisioning_exceptions=15,
+                 handling_minutes=30.0)
+    raw = {q.product_id: {"fallout": (q.fallout or 0) / 1000} for q in quiet}
+    norm, notes = det._normalised(quiet, raw, ("fallout",))
+    assert norm["Q01"]["fallout"] == 1.0 and norm["Q02"]["fallout"] == 0.0
+    burden = [f for f in det.single_findings(quiet, TELCO_DETECTORS) if f.detector_type == "OPERATIONAL_BURDEN"]
+    assert [f.subjects for f in burden] == [["Q01"]]

@@ -4,7 +4,7 @@ from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # .env lives at the repo root (pra-starter/.env); also accept backend/.env.
@@ -19,6 +19,13 @@ class PlatformMode(StrEnum):
 class AIProviderName(StrEnum):
     NONE = "none"
     ANTHROPIC = "anthropic"
+
+
+DEV_ENVIRONMENTS = frozenset({"dev", "development", "local", "test"})
+PLACEHOLDER_SECRETS = frozenset({
+    "dev-only-insecure-secret-change-me-0000000000",
+    "change-me-to-a-long-random-string-at-least-32-bytes",
+})
 
 
 class Settings(BaseSettings):
@@ -58,6 +65,27 @@ class Settings(BaseSettings):
     upload_max_parts: int = 2000
 
     cors_origins: str = "http://localhost:5173"  # comma-separated
+
+    @model_validator(mode="after")
+    def _production_guard(self) -> "Settings":
+        """SEC-01: outside dev/test, placeholder or missing secrets must stop the process at start-up."""
+        if self.environment.lower() in DEV_ENVIRONMENTS:
+            return self
+        problems = []
+        if self.is_standalone and (self.jwt_secret in PLACEHOLDER_SECRETS or len(self.jwt_secret) < 32
+                                   or len(set(self.jwt_secret)) < 8):
+            problems.append("PRA_JWT_SECRET is a dev placeholder or too weak (use 32+ random characters)")
+        if not self.fernet_key:
+            problems.append("PRA_FERNET_KEY must be set (secrets at rest)")
+        if self.demo_password:
+            problems.append("PRA_DEMO_PASSWORD must not be set outside dev/test")
+        if any(o.strip() == "*" for o in self.cors_origins.split(",")):
+            problems.append("PRA_CORS_ORIGINS must list explicit origins")
+        if "pra:pra@" in self.database_url:
+            problems.append("PRA_DATABASE_URL still uses the local default credentials")
+        if problems:
+            raise ValueError(f"Unsafe settings for PRA_ENVIRONMENT={self.environment}: " + "; ".join(problems))
+        return self
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -106,7 +106,8 @@ cd backend
 ```
 
 There is no sign-up page. After 5 wrong passwords, an account is locked for 15 minutes. Every
-sign-in attempt is audited. The page always says "Invalid email or password", so it never reveals
+sign-in attempt is audited. Sign out revokes the token at once (`POST /auth/logout`); a password change or
+deactivation ends the user's other sessions. The page always says "Invalid email or password", so it never reveals
 whether an email exists. In AI Studio, the studio's sign-in replaces this page and endpoint.
 
 ## Handover package

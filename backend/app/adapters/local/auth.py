@@ -4,6 +4,7 @@
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import jwt
 
@@ -18,12 +19,25 @@ ALGORITHM = "HS256"
 
 
 class LocalJwtAuth:
-    def __init__(self, secret: str, issuer: str, ttl_minutes: int) -> None:
+    def __init__(self, secret: str, issuer: str, ttl_minutes: int, revocations: Any = None) -> None:
         if len(secret) < 32:
             raise ValueError("JWT secret must be at least 32 characters")
         self._secret = secret
         self._issuer = issuer
         self._ttl = timedelta(minutes=ttl_minutes)
+        self._revocations = revocations  # SEC-03: deny-list + per-user invalidation (None = not enforced)
+
+    def revoke(self, principal: Principal) -> None:
+        """Logout: the presented token is refused from now on."""
+        ctx = principal.auth_context
+        if self._revocations is not None and ctx.get("jti"):
+            remaining = int(ctx.get("exp", 0)) - int(datetime.now(UTC).timestamp())
+            self._revocations.revoke(ctx["jti"], max(remaining, 1))
+
+    def invalidate_user(self, user_id: str) -> None:
+        """Password change, deactivation or role change: every token issued before now is refused."""
+        if self._revocations is not None:
+            self._revocations.invalidate_user(user_id, self.ttl_seconds)
 
     @property
     def ttl_seconds(self) -> int:
@@ -67,6 +81,12 @@ class LocalJwtAuth:
         tenant_id = claims["tenant_id"]
         if not isinstance(tenant_id, str) or not tenant_id:
             raise AuthError("Invalid tenant_id claim")
+        if self._revocations is not None:
+            if self._revocations.is_revoked(claims.get("jti")):
+                raise AuthError("Token revoked")
+            nbf = self._revocations.invalidated_at(str(claims["sub"]))
+            if nbf is not None and int(claims["iat"]) <= nbf:
+                raise AuthError("Session ended; sign in again")
 
         return Principal(
             user_id=str(claims["sub"]),
@@ -80,5 +100,6 @@ class LocalJwtAuth:
                 "iss": claims["iss"],
                 "jti": claims.get("jti"),
                 "iat": claims["iat"],
+                "exp": claims["exp"],
             },
         )

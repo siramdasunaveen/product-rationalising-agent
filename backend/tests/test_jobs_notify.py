@@ -31,3 +31,14 @@ def test_log_notifier_records():
     n = LogNotifier()
     n.send(Notification(tenant_id="acme", recipients=("u1",), subject="Approval due", body="CAND-1042"))
     assert n.sent[0].subject == "Approval due"
+
+
+def test_only_app_jobs_can_be_queued():
+    """SEC-06: a writer to Redis must not be able to make the worker run arbitrary callables through the API."""
+    import pytest
+
+    queue = RqJobQueue(fakeredis.FakeRedis(), is_async=False)
+    with pytest.raises(ValueError, match="app.jobs"):
+        queue.enqueue("os.system", "echo pwned")
+    with pytest.raises(ValueError):
+        queue.enqueue("app.jobsx.evil")

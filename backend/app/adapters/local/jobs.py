@@ -10,6 +10,7 @@ from rq.job import Job
 from app.ports.jobs import JobState, JobStatus
 
 QUEUE_NAME = "pra"
+ALLOWED_JOB_PREFIX = "app.jobs."
 
 _STATE = {
     "queued": JobState.QUEUED,
@@ -29,6 +30,8 @@ class RqJobQueue:
         self._queue = Queue(QUEUE_NAME, connection=connection, is_async=is_async)
 
     def enqueue(self, func_path: str, *args: Any, job_id: str | None = None, **kwargs: Any) -> str:
+        if not func_path.startswith(ALLOWED_JOB_PREFIX):  # SEC-06: only this app's job functions may be queued
+            raise ValueError(f"Refusing to queue {func_path!r}: jobs must live under {ALLOWED_JOB_PREFIX}")
         job = self._queue.enqueue(func_path, *args, job_id=job_id, **kwargs)
         return job.id
 

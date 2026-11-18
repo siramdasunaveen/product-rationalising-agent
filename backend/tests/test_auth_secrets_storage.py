@@ -134,3 +134,31 @@ def test_storage_delete(tmp_path):
     store.delete(obj.key)
     with pytest.raises(FileNotFoundError):
         store.get(obj.key)
+
+
+def test_revocation_logout_and_user_invalidation():
+    """SEC-03: a revoked token and tokens issued before a user invalidation are refused."""
+    import time
+
+    import fakeredis
+
+    from app.adapters.local.auth import LocalJwtAuth
+    from app.adapters.local.revocations import RedisRevocations
+    from app.ports.auth import AuthError
+
+    a = LocalJwtAuth("s" * 40, "pra-test", 60, revocations=RedisRevocations(fakeredis.FakeRedis()))
+    issued = datetime.now(UTC) - timedelta(seconds=5)
+    tok = a.issue(user_id="u1", tenant_id="t1", name="U", roles=["viewer"], now=issued)
+    principal = a.authenticate(tok)
+    assert principal.auth_context["exp"] > principal.auth_context["iat"]
+    a.revoke(principal)
+    with pytest.raises(AuthError, match="revoked"):
+        a.authenticate(tok)
+    other = a.issue(user_id="u1", tenant_id="t1", name="U", roles=["viewer"], now=issued)
+    assert a.authenticate(other).user_id == "u1"
+    a.invalidate_user("u1")
+    with pytest.raises(AuthError, match="Session ended"):
+        a.authenticate(other)
+    time.sleep(1.1)  # the invalidation mark has second resolution: a token issued in the same second is refused
+    fresh = a.issue(user_id="u1", tenant_id="t1", name="U", roles=["viewer"])
+    assert a.authenticate(fresh).user_id == "u1"

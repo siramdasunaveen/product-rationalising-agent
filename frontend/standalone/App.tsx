@@ -5,7 +5,7 @@ import {
   AIRuntimeScreen, AssessmentsScreen, CandidateExplorerScreen, CandidateReviewScreen, CreateRunScopeScreen,
   ApprovalScreen, ApprovalsScreen, ConnectorsScreen, DecisionScreen, EvidenceRequestScreen, EvidenceRequestsScreen,
   EvidenceHubScreen, EvidenceReadinessScreen, MappingRulesScreen, PlaceholderScreen, ReconciliationScreen,
-  ReviewStartScreen, RunOverviewScreen, ScoringRouteScreen, useManifest,
+  ReviewStartScreen, RunOverviewScreen, ScoringRouteScreen, apiFetch, useManifest,
 } from "../src";
 import { tokenStore } from "./auth";
 import { Login } from "./Login";
@@ -26,9 +26,12 @@ export function App() {
   }
 
   const logout = () => {
-    tokenStore.clear();
-    queryClient.clear();
-    setToken(null);
+    // Revoke the token server-side first (SEC-03); clear locally whatever the outcome.
+    apiFetch("/auth/logout", { method: "POST", body: "{}" }).catch(() => undefined).finally(() => {
+      tokenStore.clear();
+      queryClient.clear();
+      setToken(null);
+    });
   };
 
   return (

@@ -12,6 +12,7 @@ from app.adapters.local.events import LogEventPublisher
 from app.adapters.local.jobs import RqJobQueue
 from app.adapters.local.notify import LogNotifier
 from app.adapters.local.people import DbPeopleDirectory
+from app.adapters.local.revocations import RedisRevocations
 from app.adapters.local.scanner import EicarTestScanner
 from app.adapters.local.secrets import FernetCipher
 from app.adapters.local.storage import DiskStorage
@@ -72,7 +73,8 @@ def build_platform(settings: Settings, *, redis: Any = None) -> Platform:
             redis=redis,
         )
 
-    token_issuer = LocalJwtAuth(settings.jwt_secret, settings.jwt_issuer, settings.jwt_ttl_minutes)
+    token_issuer = LocalJwtAuth(settings.jwt_secret, settings.jwt_issuer, settings.jwt_ttl_minutes,
+                                revocations=RedisRevocations(redis))
     return Platform(
         mode=PlatformMode.STANDALONE,
         auth=token_issuer,

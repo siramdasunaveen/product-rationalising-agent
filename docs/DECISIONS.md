@@ -258,6 +258,10 @@ The guides give the Opportunity Score and priority formulas and the CAND-1042 va
 ## Production security (developer's request, 17 Nov 2026)
 | Topic | Decision | Status |
 |---|---|---|
+| Session revocation (SEC-03) | Standalone tokens are revocable: logout denies the token id until it expires; a password change or deactivation invalidates all tokens issued before that moment (per-user mark in Redis with the token TTL). Role changes should call the same hook | Adopted (18 Nov 2026) |
+| Queue allow-list (SEC-06) | The job queue refuses any function path outside `app.jobs.` | Adopted (18 Nov 2026) |
+| Review fixes (steps 7-10) | A family P95 of 0 no longer zeroes above-baseline outliers (capped at 1.0); the analysis row is committed before its job is queued | Adopted (18 Nov 2026) |
+| Start-up guard (SEC-01) | Outside dev/test the settings refuse dev defaults: placeholder or weak JWT secret (standalone), missing Fernet key, demo password, wildcard CORS, local DB credentials | Adopted (18 Nov 2026) |
 | Goal | The agent must be deployable to live production with the security controls any production application follows | Adopted |
 | Baseline | OWASP ASVS 4.0.3 Level 2 + OWASP API Security Top 10 (2023) + GDPR data minimisation. No certification (SOC 2, ISO 27001, PCI) is specified; if one is required later it mainly adds process and documentation | Adopted |
 | Responsibilities | Controls in the code are fixed in the code; controls of the hosting platform (TLS, WAF, SSO/MFA, key vault, backups, network isolation, log monitoring) are listed as deployment requirements and checked at startup where possible | Adopted |

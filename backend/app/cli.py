@@ -18,6 +18,7 @@ from sqlalchemy import select
 
 from app.adapters.local.audit import DbAuditLog
 from app.adapters.local.events import LogEventPublisher
+from app.adapters.registry import build_platform
 from app.config import get_settings
 from app.db.models import AppUser
 from app.db.session import make_sessionmaker
@@ -60,6 +61,17 @@ def seed_demo_users(args: argparse.Namespace) -> int:
     return 0
 
 
+def _end_sessions(user: AppUser) -> None:
+    """SEC-03: tokens issued before now stop working (needs Redis; skipped when it is not reachable)."""
+    try:
+        platform = build_platform(get_settings())
+        if platform.token_issuer is not None:
+            platform.token_issuer.invalidate_user(str(user.id))
+    except Exception as exc:  # noqa: BLE001 - the CLI must still report the change it made
+        print(f"warning: could not end the user's sessions ({type(exc).__name__}); they end at token expiry",
+              file=sys.stderr)
+
+
 def set_password_cmd(args: argparse.Namespace) -> int:
     password = getpass.getpass("New password: ")
     if password != getpass.getpass("Repeat password: "):
@@ -76,7 +88,8 @@ def set_password_cmd(args: argparse.Namespace) -> int:
             print(exc, file=sys.stderr)
             return 1
         s.commit()
-        print(f"Password changed for {user.email} (lockout cleared)")
+        _end_sessions(user)
+        print(f"Password changed for {user.email} (lockout cleared, sessions ended)")
     return 0
 
 
@@ -132,6 +145,8 @@ def set_active(args: argparse.Namespace) -> int:
             return 1
         user.is_active = not args.inactive
         s.commit()
+        if not user.is_active:
+            _end_sessions(user)
         print(f"{user.email} is now {'active' if user.is_active else 'inactive'}")
     return 0
 

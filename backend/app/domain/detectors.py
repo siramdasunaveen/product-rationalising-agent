@@ -279,7 +279,7 @@ def _normalised(products: list[ProductFeatures], raw: dict[str, dict[str, float 
                     if v is not None:
                         notes[p.product_id].append(f"{factor}: family baseline below {MIN_BASELINE} products")
                 else:
-                    out[p.product_id][factor] = 0.0 if base == 0 else min(1.0, v / base)
+                    out[p.product_id][factor] = min(1.0, v / base) if base else (1.0 if v > 0 else 0.0)
     return out, notes
 
 

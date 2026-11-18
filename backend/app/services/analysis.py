@@ -89,9 +89,10 @@ def request_analysis(session: Session, platform: Platform, run: Run, requested_b
                     stages=stages, requested_by=requested_by)
     session.add(a)
     session.flush()
-    a.job_id = platform.jobs.enqueue(ANALYSIS_JOB, str(a.id), job_id=f"analysis-{a.id}")
     emit(session, tenant_id=run.tenant_id, event_type="AnalysisQueued", aggregate_type="run",
          aggregate_id=str(run.id), payload={"analysis_id": str(a.id), "seq": seq, "reason": reason})
+    session.commit()  # the worker reads the row on its own connection: it must be committed before the job exists
+    a.job_id = platform.jobs.enqueue(ANALYSIS_JOB, str(a.id), job_id=f"analysis-{a.id}")
     session.commit()
     return a
 
